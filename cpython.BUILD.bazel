@@ -76,6 +76,20 @@ OPTIMIZATION_COPTS = select({
     "//conditions:default": ["-O3"],
 })
 
+WINDOWS_LINK_LIBRARIES = [
+    "advapi32.lib",
+    "bcrypt.lib",
+    "crypt32.lib",
+    "iphlpapi.lib",
+    "ole32.lib",
+    "oleaut32.lib",
+    "pathcch.lib",
+    "user32.lib",
+    "version.lib",
+    "winmm.lib",
+    "ws2_32.lib",
+] + (["Rpcrt4.lib"] if PYTHON_VERSION != "3.11" else [])
+
 PLATFORM_LINKOPTS = select({
     ":darwin_arm64": [
         "-framework",
@@ -103,18 +117,8 @@ PLATFORM_LINKOPTS = select({
         "-lutil",
         "-Wl,--export-dynamic",
     ],
-    ":windows_arm64": [
-        "bcrypt.lib",
-        "pathcch.lib",
-        "version.lib",
-        "ws2_32.lib",
-    ],
-    ":windows_x86_64": [
-        "bcrypt.lib",
-        "pathcch.lib",
-        "version.lib",
-        "ws2_32.lib",
-    ],
+    ":windows_arm64": WINDOWS_LINK_LIBRARIES,
+    ":windows_x86_64": WINDOWS_LINK_LIBRARIES,
 })
 
 PYTHON_LINKOPTS = PLATFORM_LINKOPTS + select({
@@ -248,7 +252,7 @@ cpython_sysconfig(
             "LDSHARED": "lld-link /DLL",
             "LIBM": "",
             "LIBPL": "{}/config-{}-arm64-windows".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
-            "LIBS": "bcrypt.lib pathcch.lib version.lib ws2_32.lib",
+            "LIBS": " ".join(WINDOWS_LINK_LIBRARIES),
             "MACHDEP": "win32",
             "MULTIARCH": "win-arm64",
             "MULTIARCH_CPPFLAGS": "",
@@ -269,7 +273,7 @@ cpython_sysconfig(
             "LDSHARED": "lld-link /DLL",
             "LIBM": "",
             "LIBPL": "{}/config-{}-amd64-windows".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
-            "LIBS": "bcrypt.lib pathcch.lib version.lib ws2_32.lib",
+            "LIBS": " ".join(WINDOWS_LINK_LIBRARIES),
             "MACHDEP": "win32",
             "MULTIARCH": "win-amd64",
             "MULTIARCH_CPPFLAGS": "",

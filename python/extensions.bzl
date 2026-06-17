@@ -9,11 +9,14 @@ _LIBFFI_BUILD_FILE = Label("//:libffi.BUILD.bazel")
 _PATCHES = {
     "3.11": [
         Label("//python/patches/3.11:getpath-generated-header.patch"),
+        Label("//python/patches/3.11:timeval-clang-cl.patch"),
         Label("//python/patches/3.11:tracemalloc-clang-cl-pack.patch"),
+        Label("//python/patches/3.11:wincrypt-header.patch"),
+        Label("//python/patches/common:atomic-clang-cl-casts.patch"),
     ],
     "3.12": [
         Label("//python/patches/3.12:getpath-generated-header.patch"),
-        Label("//python/patches/3.12:atomic-clang-cl-casts.patch"),
+        Label("//python/patches/common:atomic-clang-cl-casts.patch"),
     ],
     "3.13": [],
     "3.14": [],

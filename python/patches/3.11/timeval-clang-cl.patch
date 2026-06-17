@@ -1,0 +1,13 @@
+--- a/Include/cpython/pytime.h
++++ b/Include/cpython/pytime.h
+@@ -52,6 +52,10 @@ functions and constants
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
++#if defined(__clang__) || defined(_MSC_VER)
++struct timeval;
++#endif
++
+ /* _PyTime_t: Python timestamp with subsecond precision. It can be used to
+    store a duration, and so indirectly a date (related to another date, like

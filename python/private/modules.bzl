@@ -340,7 +340,6 @@ _WINDOWS_COMMON = [
         "winsound",
         ["winsound.c"],
         "posix",
-        linkopts = ["winmm.lib"],
         platform = "windows",
         source_root = "PC",
     ),

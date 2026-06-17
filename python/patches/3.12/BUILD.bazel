@@ -1,4 +1,3 @@
 exports_files([
-    "atomic-clang-cl-casts.patch",
     "getpath-generated-header.patch",
 ])

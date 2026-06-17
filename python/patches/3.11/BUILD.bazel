@@ -1,4 +1,6 @@
 exports_files([
     "getpath-generated-header.patch",
+    "timeval-clang-cl.patch",
     "tracemalloc-clang-cl-pack.patch",
+    "wincrypt-header.patch",
 ])
