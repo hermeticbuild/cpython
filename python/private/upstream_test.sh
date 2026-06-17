@@ -53,14 +53,33 @@ case "$(uname -s)" in
       printf '%s/%s\n' "$directory" "$(basename "$path")"
     }
 
-    readonly python="$(resolve_file "$python_runfile")"
-    readonly short_test_tmp="$(mktemp -d /tmp/cpython-test.XXXXXX)"
+    python="$(resolve_file "$python_runfile")"
+    short_test_tmp="$(mktemp -d /tmp/cpython-test.XXXXXX)"
+    readonly python short_test_tmp
     trap 'rm -rf "$short_test_tmp"' EXIT
     export HOME="$short_test_tmp/home"
     export TMPDIR="$short_test_tmp/tmp"
     ;;
+  CYGWIN* | MINGW* | MSYS*)
+    readonly python="$python_runfile"
+    windows_temp="${TEMP:-${TMP:-C:\\Windows\\Temp}}"
+    windows_temp_base="$(cygpath -u "$windows_temp")"
+    short_test_tmp_posix="$(mktemp -d "$windows_temp_base/cpy.XXXXXX")"
+    readonly windows_temp windows_temp_base short_test_tmp_posix
+    short_test_tmp="$(cygpath -am "$short_test_tmp_posix")"
+    readonly short_test_tmp
+    trap 'rm -rf "$short_test_tmp_posix"' EXIT
+    export HOME="$short_test_tmp/home"
+    export USERPROFILE="$HOME"
+    export APPDATA="$HOME/AppData/Roaming"
+    export LOCALAPPDATA="$HOME/AppData/Local"
+    export TMPDIR="$short_test_tmp/tmp"
+    export TMP="$TMPDIR"
+    export TEMP="$TMPDIR"
+    ;;
   *)
     readonly python="$python_runfile"
+    readonly short_test_tmp="$TEST_TMPDIR"
     export HOME="$TEST_TMPDIR/home"
     export TMPDIR="$TEST_TMPDIR/tmp"
     ;;
@@ -68,6 +87,9 @@ esac
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 mkdir -p "$HOME" "$TMPDIR"
+if [[ -n "${APPDATA:-}" ]]; then
+  mkdir -p "$APPDATA" "$LOCALAPPDATA"
+fi
 
 python_options=(-I)
 if [[ "$test_name" == test_pydoc ]]; then
@@ -75,7 +97,7 @@ if [[ "$test_name" == test_pydoc ]]; then
 fi
 
 set +e
-"$python" "${python_options[@]}" -m test --verbose3 "$test_name"
+"$python" "${python_options[@]}" -m test --tempdir "$short_test_tmp" --verbose3 "$test_name"
 readonly status=$?
 set -e
 

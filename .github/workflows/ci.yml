@@ -83,12 +83,12 @@ jobs:
             )
           else
             bazel_args+=(
-              --jobs=2
+              --jobs=4
               "--extra_execution_platforms=${{ matrix.platform }}"
             )
           fi
           bazel_args+=(
-            --local_test_jobs=2
+            --local_test_jobs=4
             "--platforms=${{ matrix.platform }}"
             --strategy=TestRunner=local
           )
