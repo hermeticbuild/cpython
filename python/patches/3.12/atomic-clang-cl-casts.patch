@@ -1,0 +1,11 @@
+--- a/Include/internal/pycore_atomic.h
++++ b/Include/internal/pycore_atomic.h
+@@ -475 +475 @@
+-      } while(_InterlockedCompareExchange_acq(value, old, old) != old);
++      } while(_InterlockedCompareExchange_acq((volatile long*)value, old, old) != old);
+@@ -482 +482 @@
+-      } while(_InterlockedCompareExchange_rel(value, old, old) != old);
++      } while(_InterlockedCompareExchange_rel((volatile long*)value, old, old) != old);
+@@ -492 +492 @@
+-      } while(_InterlockedCompareExchange(value, old, old) != old);
++      } while(_InterlockedCompareExchange((volatile long*)value, old, old) != old);

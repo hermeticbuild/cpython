@@ -11,7 +11,10 @@ _PATCHES = {
         Label("//python/patches/3.11:getpath-generated-header.patch"),
         Label("//python/patches/3.11:tracemalloc-clang-cl-pack.patch"),
     ],
-    "3.12": [Label("//python/patches/3.12:getpath-generated-header.patch")],
+    "3.12": [
+        Label("//python/patches/3.12:getpath-generated-header.patch"),
+        Label("//python/patches/3.12:atomic-clang-cl-casts.patch"),
+    ],
     "3.13": [],
     "3.14": [],
 }

@@ -1,1 +1,4 @@
-exports_files(["getpath-generated-header.patch"])
+exports_files([
+    "atomic-clang-cl-casts.patch",
+    "getpath-generated-header.patch",
+])
