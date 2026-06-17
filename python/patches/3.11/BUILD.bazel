@@ -4,5 +4,6 @@ exports_files([
     "pyconfig-clang-cl.patch",
     "timeval-clang-cl.patch",
     "tracemalloc-clang-cl-pack.patch",
+    "winapi-previous-token-size.patch",
     "wincrypt-header.patch",
 ])

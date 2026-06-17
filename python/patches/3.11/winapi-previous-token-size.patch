@@ -1,0 +1,5 @@
+--- a/Modules/_winapi.c
++++ b/Modules/_winapi.c
+@@ -551 +551 @@
+-    int previousTpSize = 0;
++    DWORD previousTpSize = 0;

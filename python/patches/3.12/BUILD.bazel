@@ -1,3 +1,4 @@
 exports_files([
     "getpath-generated-header.patch",
+    "winapi-previous-token-size.patch",
 ])
