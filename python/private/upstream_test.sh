@@ -50,8 +50,13 @@ export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 mkdir -p "$HOME" "$TMPDIR"
 
+python_options=(-I)
+if [[ "$test_name" == test_pydoc ]]; then
+  python_options+=(-X "pycache_prefix=$TMPDIR/pycache")
+fi
+
 set +e
-"$python" -I -m test --verbose3 "$test_name"
+"$python" "${python_options[@]}" -m test --verbose3 "$test_name"
 readonly status=$?
 set -e
 
