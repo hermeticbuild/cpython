@@ -1,0 +1,11 @@
+--- a/autoconf/private/autoconf_config.bzl
++++ b/autoconf/private/autoconf_config.bzl
+@@ -394,0 +395,5 @@ def get_cc_toolchain_info(ctx):
++    # CheckRunner uses the "msvc" prefix to select MSVC-compatible driver flags.
++    compiler_type = cc_toolchain.compiler
++    if compiler_type == "clang-cl":
++        compiler_type = "msvc-clang-cl"
++
+@@ -405 +410 @@ def get_cc_toolchain_info(ctx):
+-        compiler_type = cc_toolchain.compiler,
++        compiler_type = compiler_type,

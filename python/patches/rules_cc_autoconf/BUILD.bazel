@@ -1,1 +1,4 @@
-exports_files(["windows-clang-cl-exceptions.patch"])
+exports_files([
+    "windows-clang-cl-command-line.patch",
+    "windows-clang-cl-exceptions.patch",
+])
