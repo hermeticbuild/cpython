@@ -407,14 +407,14 @@ CORE_SOURCES = glob([
         "Python/frozenmain.c",
     ],
     ":windows_arm64": [
-        "PC/dl_nt.c",
         "PC/invalid_parameter_handler.c",
         "Python/dynload_win.c",
+        "@cpython//python/private:windows_static_support.c",
     ],
     ":windows_x86_64": [
-        "PC/dl_nt.c",
         "PC/invalid_parameter_handler.c",
         "Python/dynload_win.c",
+        "@cpython//python/private:windows_static_support.c",
     ],
 }) + [
     "Modules/gcmodule.c",

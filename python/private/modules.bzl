@@ -56,6 +56,7 @@ _BOOTSTRAP_PREFIX = [
     _module("faulthandler", ["faulthandler.c"], "bootstrap"),
     _module("posix", ["posixmodule.c"], "bootstrap", platform = "posix"),
     _module("nt", ["posixmodule.c"], "bootstrap", init_symbol = "PyInit_nt", platform = "windows"),
+    _module("winreg", ["winreg.c"], "bootstrap", platform = "windows", source_root = "PC"),
     _module("_signal", ["signalmodule.c"], "bootstrap"),
     _module("_tracemalloc", ["_tracemalloc.c"], "bootstrap"),
 ]
@@ -340,7 +341,6 @@ _WINDOWS_COMMON = [
     _module("_winapi", ["_winapi.c"], "posix", platform = "windows"),
     _module("_overlapped", ["overlapped.c"], "posix", platform = "windows"),
     _module("msvcrt", ["msvcrtmodule.c"], "posix", platform = "windows", source_root = "PC"),
-    _module("winreg", ["winreg.c"], "posix", platform = "windows", source_root = "PC"),
     _module(
         "winsound",
         ["winsound.c"],
