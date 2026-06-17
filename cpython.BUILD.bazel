@@ -107,6 +107,12 @@ WINDOWS_TARGET_COMPATIBILITY = select({
     "//conditions:default": ["@platforms//:incompatible"],
 })
 
+POSIX_TARGET_COMPATIBILITY = select({
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
 PYTHON_DLL_BASENAME = "python{}".format(PYTHON_VERSION.replace(".", ""))
 PYTHON_DLL = PYTHON_DLL_BASENAME + ".dll"
 PYTHON_IMPORT_LIBRARY = PYTHON_DLL_BASENAME + ".lib"
@@ -411,6 +417,7 @@ filegroup(
     name = "sysconfig_makefile",
     srcs = [":generated_sysconfig"],
     output_group = "makefile",
+    target_compatible_with = POSIX_TARGET_COMPATIBILITY,
 )
 
 cc_library(
@@ -1180,6 +1187,7 @@ copy_file(
     name = "runtime_makefile",
     src = ":sysconfig_makefile",
     out = "runtime/Makefile",
+    target_compatible_with = POSIX_TARGET_COMPATIBILITY,
 )
 
 copy_file(
@@ -1192,12 +1200,14 @@ copy_file(
     name = "runtime_setup_local",
     src = "Modules/Setup.local",
     out = "runtime/Modules/Setup.local",
+    target_compatible_with = POSIX_TARGET_COMPATIBILITY,
 )
 
 copy_file(
     name = "runtime_pybuilddir",
     src = "pybuilddir.txt",
     out = "runtime/pybuilddir.txt",
+    target_compatible_with = POSIX_TARGET_COMPATIBILITY,
 )
 
 PYTHON_RUNTIME_DATA = [
@@ -1317,15 +1327,21 @@ copy_to_directory(
     root_paths = ["PC"],
 )
 
+copy_file(
+    name = "runtime_test_readme_rst",
+    src = "README.rst",
+    out = "runtime/README.rst",
+)
+
 [
     copy_file(
         name = "runtime_test_" + source.lower().replace(".", "_").replace("/", "_"),
         src = source,
         out = "runtime/" + source,
+        target_compatible_with = POSIX_TARGET_COMPATIBILITY,
     )
     for source in [
         "Makefile.pre.in",
-        "README.rst",
         "configure",
         "configure.ac",
         "pyconfig.h.in",

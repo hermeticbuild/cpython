@@ -462,15 +462,12 @@ static const char *argument_value(int argc, char **argv, const char *name) {
 }
 
 int main(int argc, char **argv) {
-  if (argc != 11) {
-    fail("expected five named command-line arguments", NULL);
+  if (argc != 7 && argc != 11) {
+    fail("expected three or five named command-line arguments", NULL);
   }
   const char *pyconfig = argument_value(argc, argv, "--pyconfig");
   const char *build_vars = argument_value(argc, argv, "--build-vars");
-  const char *makefile_template =
-      argument_value(argc, argv, "--makefile-template");
   const char *sysconfig_out = argument_value(argc, argv, "--sysconfig-out");
-  const char *makefile_out = argument_value(argc, argv, "--makefile-out");
 
   Variables variables = {0};
   parse_config_h(&variables, pyconfig);
@@ -478,6 +475,11 @@ int main(int argc, char **argv) {
   qsort(variables.items, variables.length, sizeof(*variables.items),
         compare_variables);
   write_sysconfig_data(&variables, sysconfig_out);
-  write_makefile(&variables, makefile_template, makefile_out);
+  if (argc == 11) {
+    const char *makefile_template =
+        argument_value(argc, argv, "--makefile-template");
+    const char *makefile_out = argument_value(argc, argv, "--makefile-out");
+    write_makefile(&variables, makefile_template, makefile_out);
+  }
   return EXIT_SUCCESS;
 }

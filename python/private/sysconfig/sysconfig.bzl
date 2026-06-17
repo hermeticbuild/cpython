@@ -52,26 +52,33 @@ def _cpython_sysconfig_impl(ctx):
             ctx.attr.multiarch,
         ),
     )
-    makefile = ctx.actions.declare_file("Makefile")
     args = ctx.actions.args()
     args.add("--pyconfig", ctx.file.pyconfig)
     args.add("--build-vars", build_vars)
-    args.add("--makefile-template", ctx.file.makefile_template)
     args.add("--sysconfig-out", sysconfig_data)
-    args.add("--makefile-out", makefile)
+    inputs = [ctx.file.pyconfig, build_vars]
+    outputs = [sysconfig_data]
+    makefile_outputs = []
+    if ctx.attr.platform != "windows":
+        makefile = ctx.actions.declare_file("Makefile")
+        args.add("--makefile-template", ctx.file.makefile_template)
+        args.add("--makefile-out", makefile)
+        inputs.append(ctx.file.makefile_template)
+        outputs.append(makefile)
+        makefile_outputs.append(makefile)
     ctx.actions.run(
         executable = ctx.executable._generator,
         arguments = [args],
-        inputs = [ctx.file.pyconfig, ctx.file.makefile_template, build_vars],
-        outputs = [sysconfig_data, makefile],
+        inputs = inputs,
+        outputs = outputs,
         mnemonic = "CpythonSysconfig",
         progress_message = "Generating CPython sysconfig metadata for %{label}",
     )
 
     return [
-        DefaultInfo(files = depset([sysconfig_data, makefile])),
+        DefaultInfo(files = depset(outputs)),
         OutputGroupInfo(
-            makefile = depset([makefile]),
+            makefile = depset(makefile_outputs),
             sysconfig_data = depset([sysconfig_data]),
         ),
     ]
