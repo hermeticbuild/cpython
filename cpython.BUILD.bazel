@@ -17,7 +17,10 @@ load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("//bazel:release.bzl", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_SOABI", "PYTHON_VERSION")
 
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//visibility:public"],
+    features = ["dynamic_link_msvcrt"],
+)
 
 config_setting(
     name = "darwin_arm64",
@@ -144,8 +147,8 @@ PYTHON_LINKOPTS = PLATFORM_LINKOPTS + select({
     ],
     ":linux_arm64": [],
     ":linux_x86_64": [],
-    ":windows_arm64": [],
-    ":windows_x86_64": [],
+    ":windows_arm64": ["/STACK:2000000"],
+    ":windows_x86_64": ["/STACK:2000000"],
 })
 
 pyconfig(
@@ -532,27 +535,33 @@ BOOTSTRAP_CORE_SOURCES = CORE_BASE_SOURCES + select({
 COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
     "-fwrapv",
     "-DNDEBUG",
-    "-DABIFLAGS=\\\"\\\"",
-    "-DPLATLIBDIR=\\\"lib\\\"",
 ] + select({
     ":darwin_arm64": [
+        "-DABIFLAGS=\\\"\\\"",
         "-DMULTIARCH=\\\"darwin\\\"",
         "-DPLATFORM=\\\"darwin\\\"",
+        "-DPLATLIBDIR=\\\"lib\\\"",
         "-DSOABI=\\\"%s-darwin\\\"" % PYTHON_SOABI,
     ],
     ":darwin_x86_64": [
+        "-DABIFLAGS=\\\"\\\"",
         "-DMULTIARCH=\\\"darwin\\\"",
         "-DPLATFORM=\\\"darwin\\\"",
+        "-DPLATLIBDIR=\\\"lib\\\"",
         "-DSOABI=\\\"%s-darwin\\\"" % PYTHON_SOABI,
     ],
     ":linux_arm64": [
+        "-DABIFLAGS=\\\"\\\"",
         "-DMULTIARCH=\\\"aarch64-linux-gnu\\\"",
         "-DPLATFORM=\\\"linux\\\"",
+        "-DPLATLIBDIR=\\\"lib\\\"",
         "-DSOABI=\\\"%s-aarch64-linux-gnu\\\"" % PYTHON_SOABI,
     ],
     ":linux_x86_64": [
+        "-DABIFLAGS=\\\"\\\"",
         "-DMULTIARCH=\\\"x86_64-linux-gnu\\\"",
         "-DPLATFORM=\\\"linux\\\"",
+        "-DPLATLIBDIR=\\\"lib\\\"",
         "-DSOABI=\\\"%s-x86_64-linux-gnu\\\"" % PYTHON_SOABI,
     ],
     ":windows_arm64": [
@@ -563,13 +572,17 @@ COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
     ],
 })
 
+WINDOWS_REMOTE_DEBUG_COPTS = ["-DPy_REMOTE_DEBUG=1"] if PYTHON_VERSION == "3.14" else []
+
 CORE_COPTS = ["-DPy_BUILD_CORE=1"] + COMMON_COPTS + select({
     ":windows_arm64": [
         "-DMS_DLL_ID=\\\"%s-arm64\\\"" % PYTHON_VERSION,
+    ] + WINDOWS_REMOTE_DEBUG_COPTS + [
         "-DVPATH=\\\".\\\"",
     ],
     ":windows_x86_64": [
         "-DMS_DLL_ID=\\\"%s\\\"" % PYTHON_VERSION,
+    ] + WINDOWS_REMOTE_DEBUG_COPTS + [
         "-DVPATH=\\\".\\\"",
     ],
     "//conditions:default": [],
@@ -753,14 +766,32 @@ FROZEN_MODULES = {
     for output, (module_name, source) in FROZEN_MODULES.items()
 ]
 
-GETPATH_COPTS = [
-    "-DEXEC_PREFIX=\\\"/python\\\"",
-    "-DPLATLIBDIR=\\\"lib\\\"",
-    "-DPREFIX=\\\"/python\\\"",
-    "-DPYTHONPATH=\\\"\\\"",
-    "-DVERSION=\\\"%s\\\"" % PYTHON_VERSION,
-    "-DVPATH=\\\".\\\"",
-]
+GETPATH_COPTS = select({
+    ":windows_arm64": [
+        "-DEXEC_PREFIX=NULL",
+        "-DPLATLIBDIR=\\\"DLLs\\\"",
+        "-DPREFIX=NULL",
+        "-DPYDEBUGEXT=\\\"\\\"",
+        "-DVERSION=NULL",
+        "-DVPATH=\\\".\\\"",
+    ],
+    ":windows_x86_64": [
+        "-DEXEC_PREFIX=NULL",
+        "-DPLATLIBDIR=\\\"DLLs\\\"",
+        "-DPREFIX=NULL",
+        "-DPYDEBUGEXT=\\\"\\\"",
+        "-DVERSION=NULL",
+        "-DVPATH=\\\".\\\"",
+    ],
+    "//conditions:default": [
+        "-DEXEC_PREFIX=\\\"/python\\\"",
+        "-DPLATLIBDIR=\\\"lib\\\"",
+        "-DPREFIX=\\\"/python\\\"",
+        "-DPYTHONPATH=\\\"\\\"",
+        "-DVERSION=\\\"%s\\\"" % PYTHON_VERSION,
+        "-DVPATH=\\\".\\\"",
+    ],
+})
 
 DEEPFREEZE_SRCS = deepfreeze_sources(
     bootstrap_deps = select({
@@ -821,7 +852,7 @@ cc_shared_library(
         ":windows_x86_64": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    user_link_flags = WINDOWS_LINK_LIBRARIES,
+    user_link_flags = WINDOWS_LINK_LIBRARIES + ["/OPT:REF,NOICF"],
 )
 
 filegroup(
@@ -987,10 +1018,7 @@ copy_file(
 
 PYTHON_RUNTIME_DATA = [
     ":runtime_include",
-    ":runtime_makefile",
-    ":runtime_pybuilddir",
     ":runtime_pyconfig",
-    ":runtime_setup_local",
     ":runtime_stdlib",
 ] + NATIVE_TEST_PROGRAMS + select({
     ":windows_arm64": [
@@ -1005,7 +1033,11 @@ PYTHON_RUNTIME_DATA = [
         ":python_dll",
         ":python_import_library",
     ],
-    "//conditions:default": [],
+    "//conditions:default": [
+        ":runtime_makefile",
+        ":runtime_pybuilddir",
+        ":runtime_setup_local",
+    ],
 })
 
 PYTHON_RUNTIME_DEPS = select({
