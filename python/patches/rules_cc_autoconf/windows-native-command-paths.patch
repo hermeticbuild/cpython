@@ -1,0 +1,57 @@
+diff --git a/autoconf/private/checker/compilation.cc b/autoconf/private/checker/compilation.cc
+index e792355..45f4ee9 100644
+--- a/autoconf/private/checker/compilation.cc
++++ b/autoconf/private/checker/compilation.cc
+@@ -33,19 +33,23 @@ namespace {
+  * fails.
+  */
+ std::string get_short_path(const std::string& long_path) {
++    std::string windows_path =
++        std::filesystem::path(long_path).make_preferred().string();
++
+     // Get the required buffer size
+-    DWORD length = GetShortPathNameA(long_path.c_str(), nullptr, 0);
++    DWORD length = GetShortPathNameA(windows_path.c_str(), nullptr, 0);
+     if (length == 0) {
+-        // If conversion fails, return original path quoted
+-        return "\"" + long_path + "\"";
++        // If conversion fails, return the Windows path quoted
++        return "\"" + windows_path + "\"";
+     }
+ 
+     // Get the short path
+     std::vector<char> buffer(length);
+-    DWORD result = GetShortPathNameA(long_path.c_str(), buffer.data(), length);
++    DWORD result =
++        GetShortPathNameA(windows_path.c_str(), buffer.data(), length);
+     if (result == 0 || result >= length) {
+-        // If conversion fails, return original path quoted
+-        return "\"" + long_path + "\"";
++        // If conversion fails, return the Windows path quoted
++        return "\"" + windows_path + "\"";
+     }
+ 
+     return std::string(buffer.data());
+diff --git a/autoconf/private/checker/system_header.cc b/autoconf/private/checker/system_header.cc
+index 1d046a6..68193b6 100644
+--- a/autoconf/private/checker/system_header.cc
++++ b/autoconf/private/checker/system_header.cc
+@@ -20,11 +20,14 @@ namespace {
+ 
+ #ifdef _WIN32
+ std::string get_short_path_sys(const std::string& long_path) {
+-    DWORD length = GetShortPathNameA(long_path.c_str(), nullptr, 0);
+-    if (length == 0) return "\"" + long_path + "\"";
++    std::string windows_path =
++        std::filesystem::path(long_path).make_preferred().string();
++    DWORD length = GetShortPathNameA(windows_path.c_str(), nullptr, 0);
++    if (length == 0) return "\"" + windows_path + "\"";
+     std::vector<char> buffer(length);
+-    DWORD result = GetShortPathNameA(long_path.c_str(), buffer.data(), length);
+-    if (result == 0 || result >= length) return "\"" + long_path + "\"";
++    DWORD result =
++        GetShortPathNameA(windows_path.c_str(), buffer.data(), length);
++    if (result == 0 || result >= length) return "\"" + windows_path + "\"";
+     return std::string(buffer.data());
+ }
+ #endif

@@ -2,4 +2,5 @@ exports_files([
     "windows-clang-cl-command-line.patch",
     "windows-clang-cl-exceptions.patch",
     "windows-msvc-driver-link-flags.patch",
+    "windows-native-command-paths.patch",
 ])
