@@ -33,7 +33,7 @@ _PACKAGE_CHECKS = [
     checks.AC_SUBST("VERSION", "3.4.7"),
 ]
 
-def _compiler_checks():
+def _assembler_checks():
     return [
         checks.AC_TRY_COMPILE(
             name = "libffi_cv_as_cfi_pseudo_op",
@@ -67,6 +67,45 @@ def _compiler_checks():
         checks.AC_DEFINE(
             "HAVE_ARM64E_PTRAUTH",
             condition = "libffi_cv_as_ptrauth",
+            if_false = None,
+            if_true = 1,
+        ),
+        checks.AC_TRY_COMPILE(
+            name = "libffi_cv_as_x86_pcrel",
+            code = utils.AC_LANG_PROGRAM(
+                [
+                    "#if defined(__x86_64__) || defined(_M_X64)",
+                    '__asm__ (".text; libffi_pcrel: nop; .data; .long libffi_pcrel-.; .text");',
+                    "#else",
+                    "# error x86-64 assembler required",
+                    "#endif",
+                ],
+                "",
+            ),
+        ),
+        checks.AC_DEFINE(
+            "HAVE_AS_X86_PCREL",
+            condition = "libffi_cv_as_x86_pcrel",
+            if_false = None,
+            if_true = 1,
+        ),
+        checks.AC_TRY_LINK(
+            name = "libffi_cv_as_x86_64_unwind_section_type",
+            code = utils.AC_LANG_PROGRAM(
+                [
+                    "#if defined(__x86_64__) && !defined(_WIN32)",
+                    '__asm__ (".text\\n\\t.globl libffi_unwind\\nlibffi_unwind:\\n\\tnop\\n\\t.section .eh_frame,\\\"a\\\",@unwind\\n\\t.long 0\\n\\t.text");',
+                    "#else",
+                    "# error ELF or Mach-O x86-64 assembler required",
+                    "#endif",
+                ],
+                "",
+            ),
+            copts = ["-Wa,--fatal-warnings"],
+        ),
+        checks.AC_DEFINE(
+            "HAVE_AS_X86_64_UNWIND_SECTION_TYPE",
+            condition = "libffi_cv_as_x86_64_unwind_section_type",
             if_false = None,
             if_true = 1,
         ),
@@ -168,53 +207,6 @@ int main(void) {
         ),
     ]
 
-def _x86_checks():
-    return [
-        checks.AC_TRY_COMPILE(
-            name = "libffi_cv_as_x86_pcrel",
-            code = utils.AC_LANG_PROGRAM(
-                [
-                    "#if defined(__x86_64__) || defined(_M_X64)",
-                    '__asm__ (".text; libffi_pcrel: nop; .data; .long libffi_pcrel-.; .text");',
-                    "#else",
-                    "# error x86-64 assembler required",
-                    "#endif",
-                ],
-                "",
-            ),
-        ),
-        checks.AC_DEFINE(
-            "HAVE_AS_X86_PCREL",
-            condition = "libffi_cv_as_x86_pcrel",
-            if_false = None,
-            if_true = 1,
-        ),
-    ]
-
-def _x86_64_unwind_checks():
-    return [
-        checks.AC_TRY_LINK(
-            name = "libffi_cv_as_x86_64_unwind_section_type",
-            code = utils.AC_LANG_PROGRAM(
-                [
-                    "#if defined(__x86_64__) && !defined(_WIN32)",
-                    '__asm__ (".text\\n\\t.globl libffi_unwind\\nlibffi_unwind:\\n\\tnop\\n\\t.section .eh_frame,\\\"a\\\",@unwind\\n\\t.long 0\\n\\t.text");',
-                    "#else",
-                    "# error ELF or Mach-O x86-64 assembler required",
-                    "#endif",
-                ],
-                "",
-            ),
-            copts = ["-Wa,--fatal-warnings"],
-        ),
-        checks.AC_DEFINE(
-            "HAVE_AS_X86_64_UNWIND_SECTION_TYPE",
-            condition = "libffi_cv_as_x86_64_unwind_section_type",
-            if_false = None,
-            if_true = 1,
-        ),
-    ]
-
 def _target_policy(target, trampoline_table, defines = []):
     return [
         checks.AC_SUBST("FFI_EXEC_TRAMPOLINE_TABLE", trampoline_table),
@@ -260,9 +252,19 @@ def libffi_config(name):
         "//conditions:default": [],
     })
 
+    common_checks = (
+        _PACKAGE_CHECKS +
+        _assembler_checks() +
+        _function_checks() +
+        _hidden_visibility_checks() +
+        _long_double_checks() +
+        _standard_header_checks() +
+        macros.AC_CHECK_HEADERS(_HEADERS)
+    )
+
     autoconf(
         name = name + "_checks",
-        checks = _PACKAGE_CHECKS + _compiler_checks() + _function_checks() + _hidden_visibility_checks() + _long_double_checks() + _standard_header_checks() + _x86_checks() + _x86_64_unwind_checks() + macros.AC_CHECK_HEADERS(_HEADERS) + target_policy,
+        checks = common_checks + target_policy,
         tags = ["manual"],
     )
 
