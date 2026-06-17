@@ -1,0 +1,29 @@
+--- a/Python/sysmodule.c
++++ b/Python/sysmodule.c
+@@ -2483,15 +2483,15 @@
+ #ifdef MS_COREDLL
+ /* concatenating string here */
+ PyDoc_STR(
+ "dllhandle -- [Windows only] integer handle of the Python DLL\n\
+-winver -- [Windows only] version number of the Python DLL\n\
+ "
+ )
+ #endif /* MS_COREDLL */
+ #ifdef MS_WINDOWS
+ /* concatenating string here */
+ PyDoc_STR(
+-"_enablelegacywindowsfsencoding -- [Windows only]\n\
++"winver -- [Windows only] version number of Python for registry keys\n\
++_enablelegacywindowsfsencoding -- [Windows only]\n\
+ "
+ )
+ #endif
+@@ -2945,6 +2946,8 @@
+ #ifdef MS_COREDLL
+     SET_SYS("dllhandle", PyLong_FromVoidPtr(PyWin_DLLhModule));
+     SET_SYS_FROM_STRING("winver", PyWin_DLLVersionString);
++#elif defined(MS_WINDOWS)
++    SET_SYS_FROM_STRING("winver", MS_DLL_ID);
+ #endif
+ #ifdef ABIFLAGS
+     SET_SYS_FROM_STRING("abiflags", ABIFLAGS);
