@@ -9,13 +9,14 @@ load("@cpython//python/private:pyconfig.bzl", "pyconfig")
 load("@cpython//python/private:shared_extensions.bzl", "shared_extensions")
 load("@cpython//python/private:test_programs.bzl", "native_test_programs")
 load("@cpython//python/private:upstream_tests.bzl", "upstream_regrtests")
+load("@cpython//python/private:windows_resource.bzl", "windows_resource")
 load("@cpython//python/private/sysconfig:sysconfig.bzl", "cpython_sysconfig", "merge_sysconfig_build_vars")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
-load("//bazel:release.bzl", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_SOABI", "PYTHON_VERSION")
+load("//bazel:release.bzl", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_RESOURCE_FIELD3", "PYTHON_SOABI", "PYTHON_VERSION")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -101,9 +102,30 @@ WINDOWS_BOOTSTRAP_DEFINES = [
     "Py_NO_ENABLE_SHARED=1",
 ]
 
+WINDOWS_TARGET_COMPATIBILITY = select({
+    "@platforms//os:windows": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
 PYTHON_DLL_BASENAME = "python{}".format(PYTHON_VERSION.replace(".", ""))
 PYTHON_DLL = PYTHON_DLL_BASENAME + ".dll"
 PYTHON_IMPORT_LIBRARY = PYTHON_DLL_BASENAME + ".lib"
+
+WINDOWS_RESOURCE_INPUTS = [
+    "Include/cpython/modsupport.h",
+    "Include/modsupport.h",
+]
+
+WINDOWS_RESOURCE_DEFINES = ["FIELD3={}".format(PYTHON_RESOURCE_FIELD3)]
+WINDOWS_RESOURCE_INCLUDE_ROOTS = [
+    "Include/patchlevel.h",
+    "PC/python_ver_rc.h",
+]
+WINDOWS_RESOURCE_SYSTEM_INCLUDES = [
+    "@windows_sdk//:winsdk_shared_include",
+    "@windows_sdk//:winsdk_ucrt_include",
+    "@windows_sdk//:winsdk_um_include",
+]
 
 PLATFORM_LINKOPTS = select({
     ":darwin_arm64": [
@@ -167,6 +189,43 @@ cc_library(
     srcs = ["@sqlite3//:sqlite3.c"],
     hdrs = [":sqlite3_header"],
     defines = ["SQLITE_ENABLE_FTS4=1"],
+)
+
+cc_library(
+    name = "sqlite3_dll_objects",
+    srcs = ["@sqlite3//:sqlite3.c"],
+    hdrs = [":sqlite3_header"],
+    local_defines = [
+        "SQLITE_API=__declspec(dllexport)",
+        "SQLITE_ENABLE_FTS4=1",
+        "SQLITE_ENABLE_FTS5=1",
+        "SQLITE_ENABLE_MATH_FUNCTIONS=1",
+        "SQLITE_ENABLE_RTREE=1",
+        "SQLITE_OMIT_AUTOINIT=1",
+    ],
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+cc_shared_library(
+    name = "sqlite3_dll",
+    deps = [":sqlite3_dll_objects"],
+    features = ["no_windows_export_all_symbols"],
+    shared_lib_name = "sqlite3.dll",
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+filegroup(
+    name = "sqlite3_dll_interface_library",
+    srcs = [":sqlite3_dll"],
+    output_group = "interface_library",
+)
+
+cc_import(
+    name = "sqlite3_dll_import",
+    hdrs = [":sqlite3_header"],
+    interface_library = ":sqlite3_dll_interface_library",
+    shared_library = ":sqlite3_dll",
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
 )
 
 SYSCONFIG_PREFIX = "/python"
@@ -928,6 +987,131 @@ cc_import(
     }),
 )
 
+windows_resource(
+    name = "python_exe_resource",
+    src = "PC/python_exe.rc",
+    defines = WINDOWS_RESOURCE_DEFINES,
+    include_roots = WINDOWS_RESOURCE_INCLUDE_ROOTS,
+    inputs = WINDOWS_RESOURCE_INPUTS,
+    out = "python_exe.res",
+    resources = {
+        "icons\\python.ico": "PC/icons/python.ico",
+        "python.manifest": "PC/python.manifest",
+    },
+    system_include_directories = WINDOWS_RESOURCE_SYSTEM_INCLUDES,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+windows_resource(
+    name = "pythonw_exe_resource",
+    src = "PC/pythonw_exe.rc",
+    defines = WINDOWS_RESOURCE_DEFINES,
+    include_roots = WINDOWS_RESOURCE_INCLUDE_ROOTS,
+    inputs = WINDOWS_RESOURCE_INPUTS,
+    out = "pythonw_exe.res",
+    resources = {
+        "icons\\pythonw.ico": "PC/icons/pythonw.ico",
+        "python.manifest": "PC/python.manifest",
+    },
+    system_include_directories = WINDOWS_RESOURCE_SYSTEM_INCLUDES,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+windows_resource(
+    name = "venvlauncher_resource",
+    src = "PC/pylauncher.rc",
+    defines = WINDOWS_RESOURCE_DEFINES + ["PY_ICON"],
+    include_roots = WINDOWS_RESOURCE_INCLUDE_ROOTS,
+    inputs = WINDOWS_RESOURCE_INPUTS,
+    out = "venvlauncher.res",
+    resources = {
+        "icons\\python.ico": "PC/icons/python.ico",
+        "launcher-usage.txt": "PC/launcher-usage.txt",
+        "python.manifest": "PC/python.manifest",
+    },
+    system_include_directories = WINDOWS_RESOURCE_SYSTEM_INCLUDES,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+windows_resource(
+    name = "venvwlauncher_resource",
+    src = "PC/pylauncher.rc",
+    defines = WINDOWS_RESOURCE_DEFINES + ["PYW_ICON"],
+    include_roots = WINDOWS_RESOURCE_INCLUDE_ROOTS,
+    inputs = WINDOWS_RESOURCE_INPUTS,
+    out = "venvwlauncher.res",
+    resources = {
+        "icons\\pythonw.ico": "PC/icons/pythonw.ico",
+        "launcher-usage.txt": "PC/launcher-usage.txt",
+        "python.manifest": "PC/python.manifest",
+    },
+    system_include_directories = WINDOWS_RESOURCE_SYSTEM_INCLUDES,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+cc_binary(
+    name = "runtime/pythonw",
+    srcs = ["PC/WinMain.c"],
+    additional_linker_inputs = [":pythonw_exe_resource"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":headers",
+        ":python_dll_import",
+    ],
+    features = ["-linker_subsystem_flag"],
+    linkopts = PYTHON_LINKOPTS + [
+        "/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY,
+        "/SUBSYSTEM:WINDOWS",
+        "$(location :pythonw_exe_resource)",
+    ],
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+VENV_LAUNCHER_SOURCE = "PC/launcher.c" if PYTHON_VERSION in ["3.11", "3.12"] else "PC/venvlauncher.c"
+VENV_LAUNCHER_COMMON_DEFINES = ["VENV_REDIRECT"] if PYTHON_VERSION in ["3.11", "3.12"] else []
+VENV_LAUNCHER_CONSOLE_DEFINES = VENV_LAUNCHER_COMMON_DEFINES + [
+    "_CONSOLE",
+] + (["EXENAME=L\\\"python.exe\\\""] if PYTHON_VERSION in ["3.13", "3.14"] else [])
+VENV_LAUNCHER_WINDOWS_DEFINES = VENV_LAUNCHER_COMMON_DEFINES + [
+    "_WINDOWS",
+] + (["EXENAME=L\\\"pythonw.exe\\\""] if PYTHON_VERSION in ["3.13", "3.14"] else [])
+VENV_LAUNCHER_LINKOPTS = (
+    ["advapi32.lib", "version.lib"] if PYTHON_VERSION in ["3.11", "3.12"] else ["pathcch.lib"]
+)
+
+cc_binary(
+    name = "runtime/venvlauncher",
+    srcs = [VENV_LAUNCHER_SOURCE],
+    additional_linker_inputs = [":venvlauncher_resource"],
+    deps = [":headers"],
+    features = [
+        "-dynamic_link_msvcrt",
+        "static_link_msvcrt",
+    ],
+    linkopts = VENV_LAUNCHER_LINKOPTS + ["$(location :venvlauncher_resource)"],
+    local_defines = VENV_LAUNCHER_CONSOLE_DEFINES,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
+cc_binary(
+    name = "runtime/venvwlauncher",
+    srcs = [VENV_LAUNCHER_SOURCE],
+    additional_linker_inputs = [":venvwlauncher_resource"],
+    deps = [":headers"],
+    features = [
+        "-dynamic_link_msvcrt",
+        "-linker_subsystem_flag",
+        "static_link_msvcrt",
+    ],
+    linkopts = VENV_LAUNCHER_LINKOPTS + [
+        "user32.lib",
+        "/SUBSYSTEM:WINDOWS",
+        "$(location :venvwlauncher_resource)",
+    ],
+    local_defines = VENV_LAUNCHER_WINDOWS_DEFINES,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
 SHARED_EXTENSIONS = shared_extensions(
     PYTHON_VERSION,
     PYTHON_SOABI,
@@ -1026,12 +1210,18 @@ PYTHON_RUNTIME_DATA = [
         ":python3_import_library",
         ":python_dll",
         ":python_import_library",
+        ":runtime/pythonw",
+        ":runtime/venvlauncher",
+        ":runtime/venvwlauncher",
     ],
     ":windows_x86_64": [
         ":python3_dll",
         ":python3_import_library",
         ":python_dll",
         ":python_import_library",
+        ":runtime/pythonw",
+        ":runtime/venvlauncher",
+        ":runtime/venvwlauncher",
     ],
     "//conditions:default": [
         ":runtime_makefile",
@@ -1067,12 +1257,23 @@ BUILD_METADATA = cpython_build_metadata(
 cc_binary(
     name = "runtime/python",
     srcs = ["Programs/python.c"],
+    additional_linker_inputs = select({
+        ":windows_arm64": [":python_exe_resource"],
+        ":windows_x86_64": [":python_exe_resource"],
+        "//conditions:default": [],
+    }),
     copts = CORE_COPTS,
     data = PYTHON_RUNTIME_DATA + BUILD_METADATA.runtime_data,
     deps = PYTHON_RUNTIME_DEPS,
     linkopts = PYTHON_LINKOPTS + select({
-        ":windows_arm64": ["/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY],
-        ":windows_x86_64": ["/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY],
+        ":windows_arm64": [
+            "/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY,
+            "$(location :python_exe_resource)",
+        ],
+        ":windows_x86_64": [
+            "/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY,
+            "$(location :python_exe_resource)",
+        ],
         "//conditions:default": [],
     }),
 )
@@ -1131,19 +1332,31 @@ copy_to_directory(
     ]
 ]
 
+copy_file(
+    name = "runtime_test_tools_buildbot_test_bat",
+    src = "Tools/buildbot/test.bat",
+    out = "runtime/Tools/buildbot/test.bat",
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+)
+
 filegroup(
     name = "source_build_test_data",
     srcs = BUILD_METADATA.test_data + [
         ":runtime_test_doc",
-        ":runtime_test_makefile_pre_in",
         ":runtime_test_objects",
         ":runtime_test_parser",
         ":runtime_test_pc",
         ":runtime_test_readme_rst",
-        ":runtime_test_configure",
-        ":runtime_test_configure_ac",
-        ":runtime_test_pyconfig_h_in",
-    ],
+    ] + select({
+        ":windows_arm64": [":runtime_test_tools_buildbot_test_bat"],
+        ":windows_x86_64": [":runtime_test_tools_buildbot_test_bat"],
+        "//conditions:default": [
+            ":runtime_test_configure",
+            ":runtime_test_configure_ac",
+            ":runtime_test_makefile_pre_in",
+            ":runtime_test_pyconfig_h_in",
+        ],
+    }),
 )
 
 upstream_regrtests(

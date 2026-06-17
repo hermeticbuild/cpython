@@ -1,6 +1,6 @@
 """Shared CPython extensions required by the test runtimes."""
 
-load("@cpython//python/private:modules.bzl", "ctypes_sources", "testcapi_sources")
+load("@cpython//python/private:modules.bzl", "ctypes_sources", "sqlite3_sources", "testcapi_sources")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
 _VERSIONED_WINDOWS_IMPORT = "versioned"
@@ -30,6 +30,16 @@ _COMMON_EXTENSIONS = {
         "core_module": False,
         "srcs": ["Modules/_ctypes/_ctypes_test.c"],
     },
+    "_sqlite3": {
+        "core_module": True,
+        "deps": [":sqlite3_dll_import"],
+        "local_defines": [
+            "PY_SQLITE_ENABLE_LOAD_EXTENSION=1",
+            "PY_SQLITE_HAVE_SERIALIZE=1",
+        ],
+        "posix": False,
+        "srcs": ["Modules/" + source for source in sqlite3_sources()],
+    },
     "_testimportmultiple": {
         "core_module": False,
         "srcs": ["Modules/_testimportmultiple.c"],
@@ -58,6 +68,21 @@ _TESTCLINIC_LIMITED_EXTENSION = {
     "srcs": ["Modules/_testclinic_limited.c"],
 }
 
+_WMI_EXTENSION = {
+    "core_module": False,
+    "posix": False,
+    "srcs": ["PC/_wmimodule.cpp"],
+    "windows_copts": [
+        "/std:c++20",
+        "/O2",
+        "-fwrapv",
+    ],
+    "windows_linkopts": [
+        "propsys.lib",
+        "wbemuuid.lib",
+    ],
+}
+
 _VERSION_EXTENSIONS = {
     "3.11": {
         "_testcapi": {
@@ -78,6 +103,7 @@ _VERSION_EXTENSIONS = {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],
         },
+        "_wmi": _WMI_EXTENSION,
     },
     "3.13": {
         "_testcapi": {
@@ -94,6 +120,7 @@ _VERSION_EXTENSIONS = {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],
         },
+        "_wmi": _WMI_EXTENSION,
     },
     "3.14": {
         "_testcapi": {
@@ -105,6 +132,7 @@ _VERSION_EXTENSIONS = {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],
         },
+        "_wmi": _WMI_EXTENSION,
     },
 }
 
@@ -124,6 +152,12 @@ _WINDOWS_SYSTEM_LINKOPTS = [
     "ole32.lib",
     "oleaut32.lib",
     "shell32.lib",
+]
+
+_WINDOWS_COPTS = [
+    "/std:c11",
+    "/O2",
+    "-fwrapv",
 ]
 
 def _shared_extension(
@@ -163,6 +197,7 @@ def _windows_extension(
         python_import_library,
         stable_import,
         windows_imports,
+        copts = _WINDOWS_COPTS,
         extra_deps = [],
         extra_linkopts = [],
         extra_local_defines = []):
@@ -184,11 +219,7 @@ def _windows_extension(
     cc_binary(
         name = name,
         srcs = srcs,
-        copts = [
-            "/std:c11",
-            "/O2",
-            "-fwrapv",
-        ],
+        copts = copts,
         deps = deps,
         features = ["no_windows_export_all_symbols"],
         linkopts = linkopts,
@@ -225,10 +256,13 @@ def shared_extensions(
     extensions.update(_VERSION_EXTENSIONS[version])
 
     common_outputs = []
-    windows_outputs = []
+    windows_outputs = [":sqlite3_dll"]
     for module_name in sorted(extensions):
         extension = extensions[module_name]
-        local_defines = extension.get("local_defines_by_version", {}).get(version, [])
+        local_defines = (
+            extension.get("local_defines", []) +
+            extension.get("local_defines_by_version", {}).get(version, [])
+        )
         if extension.get("posix", True):
             output = module_name + ".so"
             _shared_extension(
@@ -253,6 +287,7 @@ def shared_extensions(
                 python_import_library = python_import_library,
                 stable_import = stable_import,
                 windows_imports = extension.get("windows_imports", [_VERSIONED_WINDOWS_IMPORT]),
+                copts = extension.get("windows_copts", _WINDOWS_COPTS),
                 extra_deps = extension.get("deps", []),
                 extra_linkopts = extension.get("windows_linkopts", []),
                 extra_local_defines = local_defines,

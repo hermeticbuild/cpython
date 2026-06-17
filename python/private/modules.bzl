@@ -105,6 +105,22 @@ def ctypes_sources():
     """Returns the _ctypes source paths."""
     return _CTYPES_SOURCES
 
+_SQLITE3_SOURCES = [
+    "_sqlite/blob.c",
+    "_sqlite/connection.c",
+    "_sqlite/cursor.c",
+    "_sqlite/microprotocols.c",
+    "_sqlite/module.c",
+    "_sqlite/prepare_protocol.c",
+    "_sqlite/row.c",
+    "_sqlite/statement.c",
+    "_sqlite/util.c",
+]
+
+def sqlite3_sources():
+    """Returns the _sqlite3 source paths."""
+    return _SQLITE3_SOURCES
+
 _STDLIB_COMMON = [
     _module("array", ["arraymodule.c"], "stdlib"),
     _module(
@@ -149,19 +165,10 @@ _STDLIB_COMMON = [
     ),
     _module(
         "_sqlite3",
-        [
-            "_sqlite/blob.c",
-            "_sqlite/connection.c",
-            "_sqlite/cursor.c",
-            "_sqlite/microprotocols.c",
-            "_sqlite/module.c",
-            "_sqlite/prepare_protocol.c",
-            "_sqlite/row.c",
-            "_sqlite/statement.c",
-            "_sqlite/util.c",
-        ],
+        sqlite3_sources(),
         "stdlib",
         deps = [":hermetic_sqlite3"],
+        platform = "posix",
     ),
     _module("_zoneinfo", ["_zoneinfo.c"], "stdlib"),
     _module("math", ["mathmodule.c"], "stdlib"),

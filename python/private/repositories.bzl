@@ -27,11 +27,18 @@ def _cpython_source_repository_impl(repository_ctx):
     version_parts = repository_ctx.attr.release.split(".")
     minor = ".".join(version_parts[:2])
     cpython_tag = "cpython-{}{}".format(version_parts[0], version_parts[1])
+    resource_field3 = int(version_parts[2]) * 1000 + 150
     repository_ctx.file(
         "bazel/release.bzl",
-        "PYTHON_NEEDS_DEEPFREEZE = {needs_deepfreeze}\nPYTHON_VERSION = {minor}\nPYTHON_SOABI = {soabi}\n".format(
+        (
+            "PYTHON_NEEDS_DEEPFREEZE = {needs_deepfreeze}\n" +
+            "PYTHON_RESOURCE_FIELD3 = {resource_field3}\n" +
+            "PYTHON_VERSION = {minor}\n" +
+            "PYTHON_SOABI = {soabi}\n"
+        ).format(
             minor = repr(minor),
             needs_deepfreeze = repr(minor in ["3.11", "3.12"]),
+            resource_field3 = resource_field3,
             soabi = repr(cpython_tag),
         ),
     )

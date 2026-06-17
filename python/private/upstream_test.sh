@@ -22,6 +22,8 @@ if [[ ! -f "$python_runfile" ]]; then
   echo "Python runfile not found: $1" >&2
   exit 2
 fi
+python_basename="$(basename "$python_runfile")"
+readonly python_basename
 readonly test_name="$2"
 readonly no_tests_policy="$3"
 
@@ -61,21 +63,24 @@ case "$(uname -s)" in
     export TMPDIR="$short_test_tmp/tmp"
     ;;
   CYGWIN* | MINGW* | MSYS*)
-    readonly python="$python_runfile"
+    python="$(cygpath -alw "$python_runfile")"
+    readonly python
     windows_temp="${TEMP:-${TMP:-C:\\Windows\\Temp}}"
     windows_temp_base="$(cygpath -u "$windows_temp")"
     short_test_tmp_posix="$(mktemp -d "$windows_temp_base/cpy.XXXXXX")"
     readonly windows_temp windows_temp_base short_test_tmp_posix
-    short_test_tmp="$(cygpath -am "$short_test_tmp_posix")"
+    short_test_tmp="$(cygpath -aw "$short_test_tmp_posix")"
     readonly short_test_tmp
     trap 'rm -rf "$short_test_tmp_posix"' EXIT
-    export HOME="$short_test_tmp/home"
-    export USERPROFILE="$HOME"
-    export APPDATA="$HOME/AppData/Roaming"
-    export LOCALAPPDATA="$HOME/AppData/Local"
-    export TMPDIR="$short_test_tmp/tmp"
-    export TMP="$TMPDIR"
-    export TEMP="$TMPDIR"
+    HOME="$(cygpath -aw "$short_test_tmp_posix/home")"
+    USERPROFILE="$HOME"
+    APPDATA="$(cygpath -aw "$short_test_tmp_posix/home/AppData/Roaming")"
+    LOCALAPPDATA="$(cygpath -aw "$short_test_tmp_posix/home/AppData/Local")"
+    TMPDIR="$(cygpath -aw "$short_test_tmp_posix/tmp")"
+    TMP="$TMPDIR"
+    TEMP="$TMPDIR"
+    export APPDATA HOME LOCALAPPDATA TEMP TMP TMPDIR USERPROFILE
+    unset TZ
     ;;
   *)
     readonly python="$python_runfile"
@@ -92,27 +97,44 @@ if [[ -n "${APPDATA:-}" ]]; then
 fi
 
 test_python="$python"
+stage_runtime=false
 if [[ "$test_name" == test_regrtest ]]; then
-  source_runtime="$(dirname "$python")"
+  stage_runtime=true
+fi
+case "$(uname -s):$test_name" in
+  CYGWIN*:test_distutils | CYGWIN*:test_lib2to3 | MINGW*:test_distutils | MINGW*:test_lib2to3 | MSYS*:test_distutils | MSYS*:test_lib2to3)
+    stage_runtime=true
+    ;;
+esac
+
+if [[ "$stage_runtime" == true ]]; then
+  case "$(uname -s)" in
+    CYGWIN* | MINGW* | MSYS*)
+      source_runtime="$(dirname "$python_runfile")"
+      ;;
+    *)
+      source_runtime="$(dirname "$python")"
+      ;;
+  esac
   staged_runtime="$short_test_tmp/runtime"
   mkdir -p "$staged_runtime"
   case "$(uname -s)" in
     Darwin | Linux)
       for source in "$source_runtime"/*; do
         name="$(basename "$source")"
-        if [[ "$name" != "$(basename "$python")" && "$name" != build ]]; then
+        if [[ "$name" != "$python_basename" && "$name" != build ]]; then
           ln -s "$source" "$staged_runtime/$name"
         fi
       done
-      cp "$python" "$staged_runtime/$(basename "$python")"
+      cp "$python" "$staged_runtime/$python_basename"
       mkdir "$staged_runtime/build"
-      test_python="$staged_runtime/$(basename "$python")"
+      test_python="$staged_runtime/$python_basename"
       ;;
     CYGWIN* | MINGW* | MSYS*)
       cp -R "$source_runtime/." "$staged_runtime/"
       chmod -R u+w "$staged_runtime"
       mkdir -p "$staged_runtime/build"
-      test_python="$(cygpath -am "$staged_runtime/$(basename "$python")")"
+      test_python="$(cygpath -alw "$staged_runtime/$python_basename")"
       ;;
   esac
 fi
@@ -123,8 +145,21 @@ if [[ "$test_name" == test_pydoc ]]; then
   python_options+=(-X "pycache_prefix=$TMPDIR/pycache")
 fi
 
+test_path="$PATH"
+regrtest_options=()
+case "$(uname -s):$test_name" in
+  CYGWIN*:test_dtrace | MINGW*:test_dtrace | MSYS*:test_dtrace)
+    test_path="$(cygpath -u "${SystemRoot:-C:\\Windows}")/System32"
+    ;;
+  CYGWIN*:test__xxsubinterpreters | CYGWIN*:test_interpreters | MINGW*:test__xxsubinterpreters | MINGW*:test_interpreters | MSYS*:test__xxsubinterpreters | MSYS*:test_interpreters)
+    # Keep WindowsLoadTracker in the regrtest controller process. These tests
+    # inspect the main interpreter's thread count inside the worker process.
+    regrtest_options+=(-j1)
+    ;;
+esac
+
 set +e
-"$test_python" "${python_options[@]}" -m test --tempdir "$short_test_tmp" --verbose3 "$test_name"
+PATH="$test_path" "$test_python" "${python_options[@]}" -m test "${regrtest_options[@]}" --tempdir "$short_test_tmp" --verbose3 "$test_name"
 readonly status=$?
 set -e
 

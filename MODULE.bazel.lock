@@ -516,7 +516,7 @@
     "@@windows_support+//windows:extensions.bzl%windows_sdk": {
       "general": {
         "bzlTransitiveDigest": "+cRtqyngA7nILb7W85BmcWXVbeFCd+MRsSY2DpSAbaE=",
-        "usagesDigest": "wXUyau/hGej/IVBi4P5PydiGtfWq3IuBNylhgBrq9os=",
+        "usagesDigest": "GthhmSOqO9zwkfEgEGydn5SsBDB/XDDsYZw8iW0fmJU=",
         "recordedInputs": [
           "REPO_MAPPING:windows_support+,bazel_tools bazel_tools"
         ],
@@ -547,10 +547,10 @@
           }
         },
         "moduleExtensionMetadata": {
-          "explicitRootModuleDirectDeps": [],
-          "explicitRootModuleDirectDevDeps": [
+          "explicitRootModuleDirectDeps": [
             "windows_sdk"
           ],
+          "explicitRootModuleDirectDevDeps": [],
           "useAllRepos": "NO",
           "reproducible": false
         }

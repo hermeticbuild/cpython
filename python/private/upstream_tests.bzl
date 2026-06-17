@@ -6,6 +6,15 @@ _FILE_PREFIX = "Lib/test/"
 _FILE_SUFFIX = ".py"
 _PACKAGE_SUFFIX = "/__init__.py"
 _TEST_RUNNER = "@cpython//python/private:upstream_test.sh"
+_TEST_ENV_INHERIT = select({
+    "@platforms//os:windows": [
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "SystemDrive",
+        "SystemRoot",
+    ],
+    "//conditions:default": [],
+})
 _MODULE_DATA_GLOBS = {
     "test_clinic": ["Tools/clinic/**"],
     "test_generated_cases": ["Tools/cases_generator/**"],
@@ -179,6 +188,7 @@ def upstream_regrtests(
                 python,
                 source_by_module[module],
             ] + module_data + list(test_data),
+            env_inherit = _TEST_ENV_INHERIT,
             **common_kwargs
         )
         generated_modules.append(module)
