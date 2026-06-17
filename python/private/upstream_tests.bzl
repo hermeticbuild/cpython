@@ -86,6 +86,7 @@ def upstream_regrtests(
         name,
         python,
         version,
+        module_test_data = {},
         tags = [],
         test_data = [],
         timeout = "long",
@@ -100,6 +101,7 @@ def upstream_regrtests(
         name: Name of the aggregate test_suite.
         python: Label of the CPython executable/runtime target.
         version: CPython minor version used to select resource-only tests.
+        module_test_data: Additional test data keyed by regrtest module name.
         tags: Tags added to every generated sh_test and the test_suite.
         test_data: Additional source-build files required only by regrtests.
         timeout: Bazel timeout added to every generated sh_test.
@@ -180,7 +182,7 @@ def upstream_regrtests(
         allow_no_tests = module in resource_only_modules
         module_data = (
             native.glob(_MODULE_DATA_GLOBS[module], allow_empty = False) if module in _MODULE_DATA_GLOBS else []
-        )
+        ) + module_test_data.get(module, [])
         sh_test(
             name = target_name,
             srcs = [_TEST_RUNNER],

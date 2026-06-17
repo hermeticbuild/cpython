@@ -21,6 +21,7 @@ _PATCHES = {
         Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
         Label("//python/patches/common:static-windows-winver.patch"),
         Label("//python/patches/common:tarfile-mode-capabilities.patch"),
+        Label("//python/patches/common:test-dtrace-windows.patch"),
         Label("//python/patches/common:venv-writable-windows-scripts.patch"),
     ],
     "3.12": [
@@ -33,6 +34,7 @@ _PATCHES = {
         Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
         Label("//python/patches/common:static-windows-winver.patch"),
         Label("//python/patches/common:tarfile-mode-capabilities.patch"),
+        Label("//python/patches/common:test-dtrace-windows.patch"),
         Label("//python/patches/common:venv-writable-windows-scripts.patch"),
     ],
     "3.13": [

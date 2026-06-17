@@ -3,5 +3,6 @@ exports_files([
     "cgi-nonfork-content-length-test.patch",
     "static-windows-winver.patch",
     "tarfile-mode-capabilities.patch",
+    "test-dtrace-windows.patch",
     "venv-writable-windows-scripts.patch",
 ])

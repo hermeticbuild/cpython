@@ -1185,9 +1185,16 @@ copy_to_directory(
 
 copy_to_directory(
     name = "runtime_include",
-    srcs = glob(["Include/**"]),
+    srcs = glob(["Include/**"]) + select({
+        ":windows_arm64": [":pyconfig_h"],
+        ":windows_x86_64": [":pyconfig_h"],
+        "//conditions:default": [],
+    }),
     out = "runtime/Include",
-    root_paths = ["Include"],
+    root_paths = [
+        "Include",
+        "PC",
+    ],
 )
 
 copy_file(
@@ -1201,6 +1208,7 @@ copy_file(
     name = "runtime_pyconfig",
     src = ":pyconfig_h",
     out = "runtime/pyconfig.h",
+    target_compatible_with = POSIX_TARGET_COMPATIBILITY,
 )
 
 copy_file(
@@ -1214,12 +1222,10 @@ copy_file(
     name = "runtime_pybuilddir",
     src = "pybuilddir.txt",
     out = "runtime/pybuilddir.txt",
-    target_compatible_with = POSIX_TARGET_COMPATIBILITY,
 )
 
 PYTHON_RUNTIME_DATA = [
     ":runtime_include",
-    ":runtime_pyconfig",
     ":runtime_stdlib",
 ] + NATIVE_TEST_PROGRAMS + select({
     ":windows_arm64": [
@@ -1243,6 +1249,7 @@ PYTHON_RUNTIME_DATA = [
     "//conditions:default": [
         ":runtime_makefile",
         ":runtime_pybuilddir",
+        ":runtime_pyconfig",
         ":runtime_setup_local",
     ],
 })
@@ -1384,6 +1391,13 @@ filegroup(
 
 upstream_regrtests(
     name = "upstream_tests",
+    module_test_data = {
+        "test_embed": select({
+            ":windows_arm64": [":runtime_pybuilddir"],
+            ":windows_x86_64": [":runtime_pybuilddir"],
+            "//conditions:default": [],
+        }),
+    },
     python = ":python",
     test_data = [":source_build_test_data"],
     version = PYTHON_VERSION,
