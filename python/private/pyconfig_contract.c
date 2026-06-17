@@ -27,13 +27,13 @@
 #include <pthread.h>
 #endif
 
+#ifndef MS_WINDOWS
 #if !defined(HAVE_ACOSH) || !defined(HAVE_ASINH) || !defined(HAVE_ATANH) ||    \
     !defined(HAVE_ERF) || !defined(HAVE_ERFC) || !defined(HAVE_EXPM1) ||       \
     !defined(HAVE_LOG1P) || !defined(HAVE_LOG2)
 #error "the required C99 math functions must be available"
 #endif
 
-#ifndef MS_WINDOWS
 #if !defined(HAVE_DIRFD) || !defined(HAVE_FSEEKO) || !defined(HAVE_FTELLO) ||  \
     !defined(HAVE_GETC_UNLOCKED) || !defined(HAVE_IF_NAMEINDEX) ||             \
     !defined(HAVE_INTTYPES_H) || !defined(HAVE_LOGIN_TTY) ||                   \
@@ -142,8 +142,15 @@
 #error "CPython 3.14 on Darwin must use a 63-byte pthread name limit"
 #endif
 #elif defined(MS_WINDOWS)
-#if !defined(_MSC_VER) || !defined(MS_WIN64)
+#if !defined(_MSC_VER) || !defined(_WIN32) || !defined(_WIN64) ||              \
+    !defined(MS_WIN32) || !defined(MS_WIN64)
 #error "Windows builds must use the MSVC ABI on a 64-bit target"
+#endif
+#if !defined(MS_NO_COREDLL) || !defined(NT_THREADS) || !defined(WITH_THREAD)
+#error "Windows builds must use the static CPython thread configuration"
+#endif
+#ifdef Py_ENABLE_SHARED
+#error "Windows builds must not enable the CPython shared-library ABI"
 #endif
 #else
 #error "unsupported CPython platform"
@@ -156,6 +163,7 @@
   _Static_assert(name == _Alignof(type),                                       \
                  #name " does not match _Alignof(" #type ")")
 
+#ifndef MS_WINDOWS
 CHECK_ALIGNMENT(ALIGNOF_LONG, long);
 #if PY_VERSION_HEX >= 0x030C0000
 CHECK_ALIGNMENT(ALIGNOF_MAX_ALIGN_T, max_align_t);
@@ -183,3 +191,19 @@ CHECK_SIZE(SIZEOF_UINTPTR_T, uintptr_t);
 CHECK_SIZE(SIZEOF_VOID_P, void *);
 CHECK_SIZE(SIZEOF_WCHAR_T, wchar_t);
 CHECK_SIZE(SIZEOF__BOOL, _Bool);
+#else
+CHECK_ALIGNMENT(ALIGNOF_LONG, long);
+CHECK_SIZE(SIZEOF_DOUBLE, double);
+CHECK_SIZE(SIZEOF_FLOAT, float);
+CHECK_SIZE(SIZEOF_INT, int);
+CHECK_SIZE(SIZEOF_LONG, long);
+CHECK_SIZE(SIZEOF_LONG_LONG, long long);
+CHECK_SIZE(SIZEOF_PID_T, pid_t);
+CHECK_SIZE(SIZEOF_SHORT, short);
+CHECK_SIZE(SIZEOF_WCHAR_T, wchar_t);
+CHECK_SIZE(SIZEOF__BOOL, _Bool);
+_Static_assert(sizeof(size_t) == 8, "the Windows size_t ABI must be 64-bit");
+_Static_assert(sizeof(time_t) == 8, "the Windows time_t ABI must be 64-bit");
+_Static_assert(sizeof(void *) == 8,
+               "the supported Windows targets must be 64-bit");
+#endif
