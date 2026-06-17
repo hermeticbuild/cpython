@@ -118,6 +118,23 @@ def _hidden_visibility_checks():
         ),
     ]
 
+def _function_checks():
+    return [
+        checks.AC_TRY_LINK(
+            name = "libffi_cv_func_memcpy",
+            code = utils.AC_LANG_PROGRAM(
+                ["#include <string.h>"],
+                """
+char source[1] = {0};
+char destination[1];
+memcpy(destination, source, sizeof(source));
+return destination[0];
+""",
+            ),
+            define = "HAVE_MEMCPY",
+        ),
+    ] + macros.AC_CHECK_FUNCS(["memfd_create"])
+
 def _long_double_checks():
     return [
         checks.AC_CHECK_SIZEOF("double", define = "SIZEOF_DOUBLE"),
@@ -243,10 +260,7 @@ def libffi_config(name):
 
     autoconf(
         name = name + "_checks",
-        checks = _PACKAGE_CHECKS + _compiler_checks() + _hidden_visibility_checks() + _long_double_checks() + _standard_header_checks() + _x86_checks() + _x86_64_unwind_checks() + macros.AC_CHECK_HEADERS(_HEADERS) + macros.AC_CHECK_FUNCS([
-            "memcpy",
-            "memfd_create",
-        ]) + target_policy,
+        checks = _PACKAGE_CHECKS + _compiler_checks() + _function_checks() + _hidden_visibility_checks() + _long_double_checks() + _standard_header_checks() + _x86_checks() + _x86_64_unwind_checks() + macros.AC_CHECK_HEADERS(_HEADERS) + target_policy,
         tags = ["manual"],
     )
 
