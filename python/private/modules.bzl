@@ -105,7 +105,6 @@ _STDLIB_COMMON = [
             "_ctypes/callproc.c",
             "_ctypes/stgdict.c",
             "_ctypes/cfield.c",
-            "_ctypes/malloc_closure.c",
         ],
         "stdlib",
         deps = ["@cpython_libffi//:libffi"],

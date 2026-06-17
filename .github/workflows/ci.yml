@@ -64,6 +64,7 @@ jobs:
           if [[ "${{ matrix.remote }}" == "true" ]]; then
             bazel_args+=(
               --config=remote
+              --jobs=64
               "--extra_execution_platforms=@cpython//:rbe_platform,${{ matrix.platform }}"
             )
           else
