@@ -62,11 +62,18 @@ jobs:
         run: |
           bazel_args=(--config=ci)
           if [[ "${{ matrix.remote }}" == "true" ]]; then
-            bazel_args+=(--config=remote)
+            bazel_args+=(
+              --config=remote
+              "--extra_execution_platforms=@cpython//:rbe_platform,${{ matrix.platform }}"
+            )
           else
-            bazel_args+=(--jobs=2)
+            bazel_args+=(
+              --jobs=2
+              "--extra_execution_platforms=${{ matrix.platform }}"
+            )
           fi
           bazel_args+=(
+            --local_test_jobs=2
             "--platforms=${{ matrix.platform }}"
             --strategy=TestRunner=local
           )

@@ -1160,21 +1160,25 @@ def pyconfig(name, version):
     autoconf(
         name = name + "_darwin_arm64",
         checks = _darwin_platform_checks(version, 1 if version in ["3.13", "3.14"] else 2),
+        tags = ["manual"],
     )
 
     autoconf(
         name = name + "_darwin_x86_64",
         checks = _darwin_platform_checks(version, 1),
+        tags = ["manual"],
     )
 
     autoconf(
         name = name + "_linux_arm64",
         checks = _linux_platform_checks(version),
+        tags = ["manual"],
     )
 
     autoconf(
         name = name + "_linux_x86_64",
         checks = _linux_platform_checks(version),
+        tags = ["manual"],
     )
 
     size_checks = [
@@ -1241,12 +1245,14 @@ def pyconfig(name, version):
             "//:linux_arm64": [":" + name + "_linux_arm64"],
             "//:linux_x86_64": [":" + name + "_linux_x86_64"],
         }),
+        tags = ["manual"],
     )
 
     autoconf_hdr(
         name = name + "_posix",
         out = "pyconfig.h",
         deps = [":" + name + "_checks"],
+        tags = ["manual"],
         template = "pyconfig.h.in",
     )
 
