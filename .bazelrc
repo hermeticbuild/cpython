@@ -16,6 +16,7 @@ common --test_output=errors
 
 common:ci --announce_rc
 common:ci --color=yes
+common:ci --experimental_ui_max_stdouterr_bytes=8388608
 common:ci --show_timestamps
 test:ci --test_summary=terse
 
