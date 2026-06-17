@@ -27,8 +27,17 @@ _COMMON_EXTENSIONS = {
 }
 
 _VERSION_EXTENSIONS = {
-    "3.11": {},
+    "3.11": {
+        "_testcapi": {
+            "core_module": True,
+            "srcs": ["Modules/" + source for source in testcapi_sources("3.11")],
+        },
+    },
     "3.12": {
+        "_testcapi": {
+            "core_module": True,
+            "srcs": ["Modules/" + source for source in testcapi_sources("3.12")],
+        },
         "_testsinglephase": {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],

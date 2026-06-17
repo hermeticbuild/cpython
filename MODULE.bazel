@@ -30,6 +30,8 @@ single_version_override(
 archive_override(
     module_name = "llvm",
     integrity = "sha256-sSr0NUsY06DQwPoxgh+drMpOkeG/N7Lx+KxWkZTFUDM=",
+    patch_strip = 1,
+    patches = ["//python/patches/llvm:msvc-warning-level.patch"],
     strip_prefix = "hermetic-llvm-85d29dc776702879eb9cbcbe560428df7fd24e64",
     urls = ["https://github.com/hermeticbuild/hermetic-llvm/archive/85d29dc776702879eb9cbcbe560428df7fd24e64.tar.gz"],
 )

@@ -357,6 +357,49 @@ _POSIX_3_12 = [
     _module("spwd", ["spwdmodule.c"], "posix", platform = "linux"),
 ]
 
+_TESTCAPI_3_11_SOURCES = [
+    "_testcapimodule.c",
+]
+
+_TESTCAPI_3_12_SOURCES = [
+    "_testcapimodule.c",
+    "_testcapi/vectorcall.c",
+    "_testcapi/vectorcall_limited.c",
+    "_testcapi/heaptype.c",
+    "_testcapi/abstract.c",
+    "_testcapi/bytearray.c",
+    "_testcapi/bytes.c",
+    "_testcapi/unicode.c",
+    "_testcapi/dict.c",
+    "_testcapi/set.c",
+    "_testcapi/list.c",
+    "_testcapi/tuple.c",
+    "_testcapi/getargs.c",
+    "_testcapi/pytime.c",
+    "_testcapi/datetime.c",
+    "_testcapi/docstring.c",
+    "_testcapi/mem.c",
+    "_testcapi/watchers.c",
+    "_testcapi/long.c",
+    "_testcapi/float.c",
+    "_testcapi/complex.c",
+    "_testcapi/numbers.c",
+    "_testcapi/structmember.c",
+    "_testcapi/exceptions.c",
+    "_testcapi/code.c",
+    "_testcapi/buffer.c",
+    "_testcapi/pyos.c",
+    "_testcapi/run.c",
+    "_testcapi/file.c",
+    "_testcapi/codec.c",
+    "_testcapi/immortal.c",
+    "_testcapi/heaptype_relative.c",
+    "_testcapi/gc.c",
+    "_testcapi/sys.c",
+    "_testcapi/import.c",
+    "_testcapi/eval.c",
+]
+
 _TEST_3_12 = [
     _module("xxsubtype", ["xxsubtype.c"], "test"),
     _module("_xxtestfuzz", [
@@ -365,44 +408,7 @@ _TEST_3_12 = [
     ], "test"),
     _module("_testbuffer", ["_testbuffer.c"], "test"),
     _module("_testinternalcapi", ["_testinternalcapi.c"], "test"),
-    _module("_testcapi", [
-        "_testcapimodule.c",
-        "_testcapi/vectorcall.c",
-        "_testcapi/vectorcall_limited.c",
-        "_testcapi/heaptype.c",
-        "_testcapi/abstract.c",
-        "_testcapi/bytearray.c",
-        "_testcapi/bytes.c",
-        "_testcapi/unicode.c",
-        "_testcapi/dict.c",
-        "_testcapi/set.c",
-        "_testcapi/list.c",
-        "_testcapi/tuple.c",
-        "_testcapi/getargs.c",
-        "_testcapi/pytime.c",
-        "_testcapi/datetime.c",
-        "_testcapi/docstring.c",
-        "_testcapi/mem.c",
-        "_testcapi/watchers.c",
-        "_testcapi/long.c",
-        "_testcapi/float.c",
-        "_testcapi/complex.c",
-        "_testcapi/numbers.c",
-        "_testcapi/structmember.c",
-        "_testcapi/exceptions.c",
-        "_testcapi/code.c",
-        "_testcapi/buffer.c",
-        "_testcapi/pyos.c",
-        "_testcapi/run.c",
-        "_testcapi/file.c",
-        "_testcapi/codec.c",
-        "_testcapi/immortal.c",
-        "_testcapi/heaptype_relative.c",
-        "_testcapi/gc.c",
-        "_testcapi/sys.c",
-        "_testcapi/import.c",
-        "_testcapi/eval.c",
-    ], "test"),
+    _module("_testcapi", _TESTCAPI_3_12_SOURCES, "test"),
     _module("_testclinic", ["_testclinic.c"], "test"),
 ]
 
@@ -414,7 +420,7 @@ _TEST_3_11 = [
     ], "test"),
     _module("_testbuffer", ["_testbuffer.c"], "test"),
     _module("_testinternalcapi", ["_testinternalcapi.c"], "test"),
-    _module("_testcapi", ["_testcapimodule.c"], "test"),
+    _module("_testcapi", _TESTCAPI_3_11_SOURCES, "test"),
     _module("_testclinic", ["_testclinic.c"], "test"),
 ]
 
@@ -455,7 +461,11 @@ _TESTCAPI_3_13_SOURCES = [
 ]
 
 def testcapi_sources(version):
-    """Returns the CPython 3.13 or 3.14 _testcapi source paths."""
+    """Returns the _testcapi source paths for a supported CPython version."""
+    if version == "3.11":
+        return _TESTCAPI_3_11_SOURCES
+    if version == "3.12":
+        return _TESTCAPI_3_12_SOURCES
     if version == "3.13":
         return _TESTCAPI_3_13_SOURCES
     if version == "3.14":

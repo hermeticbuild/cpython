@@ -91,13 +91,40 @@ if [[ -n "${APPDATA:-}" ]]; then
   mkdir -p "$APPDATA" "$LOCALAPPDATA"
 fi
 
+test_python="$python"
+if [[ "$test_name" == test_regrtest ]]; then
+  source_runtime="$(dirname "$python")"
+  staged_runtime="$short_test_tmp/runtime"
+  mkdir -p "$staged_runtime"
+  case "$(uname -s)" in
+    Darwin | Linux)
+      for source in "$source_runtime"/*; do
+        name="$(basename "$source")"
+        if [[ "$name" != "$(basename "$python")" && "$name" != build ]]; then
+          ln -s "$source" "$staged_runtime/$name"
+        fi
+      done
+      cp "$python" "$staged_runtime/$(basename "$python")"
+      mkdir "$staged_runtime/build"
+      test_python="$staged_runtime/$(basename "$python")"
+      ;;
+    CYGWIN* | MINGW* | MSYS*)
+      cp -R "$source_runtime/." "$staged_runtime/"
+      chmod -R u+w "$staged_runtime"
+      mkdir -p "$staged_runtime/build"
+      test_python="$(cygpath -am "$staged_runtime/$(basename "$python")")"
+      ;;
+  esac
+fi
+readonly test_python
+
 python_options=(-I)
 if [[ "$test_name" == test_pydoc ]]; then
   python_options+=(-X "pycache_prefix=$TMPDIR/pycache")
 fi
 
 set +e
-"$python" "${python_options[@]}" -m test --tempdir "$short_test_tmp" --verbose3 "$test_name"
+"$test_python" "${python_options[@]}" -m test --tempdir "$short_test_tmp" --verbose3 "$test_name"
 readonly status=$?
 set -e
 

@@ -599,9 +599,9 @@ STATIC_BOOTSTRAP_MODULES = declare_cpython_static_modules(
     deps = [":bootstrap_headers"],
 )
 
-SHARED_MODULE_NAMES = (
-    ["_testcapi"] if PYTHON_VERSION in ["3.13", "3.14"] else []
-) + (["_asyncio"] if PYTHON_VERSION == "3.14" else [])
+SHARED_MODULE_NAMES = ["_testcapi"] + (
+    ["_asyncio"] if PYTHON_VERSION == "3.14" else []
+)
 
 STATIC_MODULES = declare_cpython_static_modules(
     name = "python_static_modules",

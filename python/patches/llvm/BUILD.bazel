@@ -1,0 +1,1 @@
+exports_files(["msvc-warning-level.patch"])

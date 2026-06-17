@@ -1,4 +1,5 @@
 exports_files([
     "atomic-clang-cl-casts.patch",
     "static-windows-winver.patch",
+    "tarfile-mode-capabilities.patch",
 ])

@@ -1,5 +1,6 @@
 exports_files([
     "getpath-generated-header.patch",
     "multiprocessing-semaphore-value-type.patch",
+    "test-ssl-wrong-cert-oserror.patch",
     "winapi-previous-token-size.patch",
 ])
