@@ -9,6 +9,8 @@ _LIBFFI_BUILD_FILE = Label("//:libffi.BUILD.bazel")
 _PATCHES = {
     "3.11": [
         Label("//python/patches/3.11:getpath-generated-header.patch"),
+        Label("//python/patches/3.11:libmpdec-clang-cl.patch"),
+        Label("//python/patches/3.11:pyconfig-clang-cl.patch"),
         Label("//python/patches/3.11:timeval-clang-cl.patch"),
         Label("//python/patches/3.11:tracemalloc-clang-cl-pack.patch"),
         Label("//python/patches/3.11:wincrypt-header.patch"),

@@ -1,0 +1,15 @@
+--- a/Modules/_decimal/libmpdec/mpdecimal.c
++++ b/Modules/_decimal/libmpdec/mpdecimal.c
+@@ -76,6 +76,12 @@
+   #endif
+ #endif
+ 
++/* ClangCL claims to support 128-bit int, but doesn't */
++#if defined(__SIZEOF_INT128__) && defined(__clang__) && defined(_MSC_VER)
++#undef __SIZEOF_INT128__
++#endif
++
++
+ 
+ 
+ /* Internal header file: all symbols have local scope in the DSO */
