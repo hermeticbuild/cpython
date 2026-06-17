@@ -18,12 +18,21 @@ jobs:
         run: tools/configure_check_audit.sh --check
 
   test:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.system.name }} / CPython ${{ matrix.python.version }}
+    runs-on: ${{ matrix.system.runner }}
     strategy:
       fail-fast: false
       matrix:
-        include:
+        python:
+          - repository: python3_11
+            version: "3.11"
+          - repository: python3_12
+            version: "3.12"
+          - repository: python3_13
+            version: "3.13"
+          - repository: python3_14
+            version: "3.14"
+        system:
           - name: Linux x86_64
             runner: ubuntu-24.04
             platform: "@llvm//platforms:linux_x86_64"
@@ -56,7 +65,7 @@ jobs:
             bazel_sh: C:\Program Files\Git\bin\bash.exe
 
     env:
-      BAZEL_SH: ${{ matrix.bazel_sh }}
+      BAZEL_SH: ${{ matrix.system.bazel_sh }}
 
     steps:
       - uses: actions/checkout@v4
@@ -65,25 +74,21 @@ jobs:
         shell: bash
         run: |
           bazel_args=(--config=ci)
-          if [[ "${{ matrix.remote }}" == "true" ]]; then
+          if [[ "${{ matrix.system.remote }}" == "true" ]]; then
             bazel_args+=(
               --config=remote
               --jobs=64
-              "--extra_execution_platforms=@cpython//:rbe_platform,${{ matrix.platform }}"
+              "--extra_execution_platforms=@cpython//:rbe_platform,${{ matrix.system.platform }}"
             )
           else
             bazel_args+=(
               --jobs=4
-              "--extra_execution_platforms=${{ matrix.platform }}"
+              "--extra_execution_platforms=${{ matrix.system.platform }}"
             )
           fi
           bazel_args+=(
             --local_test_jobs=4
-            "--platforms=${{ matrix.platform }}"
+            "--platforms=${{ matrix.system.platform }}"
             --strategy=TestRunner=local
           )
-          bazel test "${bazel_args[@]}" \
-            @python3_11//... \
-            @python3_12//... \
-            @python3_13//... \
-            @python3_14//...
+          bazel test "${bazel_args[@]}" "@${{ matrix.python.repository }}//..."
