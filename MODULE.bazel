@@ -27,6 +27,13 @@ single_version_override(
     version = "3.5.5.bcr.4",
 )
 
+single_version_override(
+    module_name = "rules_cc_autoconf",
+    patch_strip = 1,
+    patches = ["//python/patches/rules_cc_autoconf:windows-clang-cl-exceptions.patch"],
+    version = "0.12.1",
+)
+
 archive_override(
     module_name = "llvm",
     integrity = "sha256-sSr0NUsY06DQwPoxgh+drMpOkeG/N7Lx+KxWkZTFUDM=",

@@ -1,0 +1,11 @@
+--- a/tools/cxxopts/cxxopts.bzl
++++ b/tools/cxxopts/cxxopts.bzl
+@@ -7,6 +7,7 @@ def cxxopts():
+         A select statement suitable for use in cc_library or cc_binary cxxopts.
+     """
+     return select({
+-        "@rules_cc//cc/compiler:msvc-cl": ["/std:c++17"],
++        "@rules_cc//cc/compiler:clang-cl": ["/std:c++17", "/EHsc"],
++        "@rules_cc//cc/compiler:msvc-cl": ["/std:c++17", "/EHsc"],
+         "//conditions:default": ["-std=c++17"],
+     })
