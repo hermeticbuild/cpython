@@ -197,6 +197,7 @@ _STDLIB_3_14 = [
     _module("_interpreters", ["_interpretersmodule.c"], "stdlib"),
     _module("_interpchannels", ["_interpchannelsmodule.c"], "stdlib"),
     _module("_interpqueues", ["_interpqueuesmodule.c"], "stdlib"),
+    _module("_remote_debugging", ["_remote_debugging_module.c"], "stdlib"),
 ]
 
 _BUNDLED_BASE = [
@@ -405,6 +406,7 @@ _TEST_3_12 = [
 ]
 
 _TEST_3_11 = [
+    _module("xxsubtype", ["xxsubtype.c"], "test"),
     _module("_xxtestfuzz", [
         "_xxtestfuzz/_xxtestfuzz.c",
         "_xxtestfuzz/fuzzer.c",
@@ -413,6 +415,42 @@ _TEST_3_11 = [
     _module("_testinternalcapi", ["_testinternalcapi.c"], "test"),
     _module("_testcapi", ["_testcapimodule.c"], "test"),
     _module("_testclinic", ["_testclinic.c"], "test"),
+]
+
+_TESTCAPI_3_13_SOURCES = [
+    "_testcapimodule.c",
+    "_testcapi/vectorcall.c",
+    "_testcapi/heaptype.c",
+    "_testcapi/abstract.c",
+    "_testcapi/unicode.c",
+    "_testcapi/dict.c",
+    "_testcapi/set.c",
+    "_testcapi/list.c",
+    "_testcapi/tuple.c",
+    "_testcapi/getargs.c",
+    "_testcapi/datetime.c",
+    "_testcapi/docstring.c",
+    "_testcapi/mem.c",
+    "_testcapi/watchers.c",
+    "_testcapi/long.c",
+    "_testcapi/float.c",
+    "_testcapi/complex.c",
+    "_testcapi/numbers.c",
+    "_testcapi/structmember.c",
+    "_testcapi/exceptions.c",
+    "_testcapi/code.c",
+    "_testcapi/buffer.c",
+    "_testcapi/pyatomic.c",
+    "_testcapi/run.c",
+    "_testcapi/file.c",
+    "_testcapi/codec.c",
+    "_testcapi/immortal.c",
+    "_testcapi/gc.c",
+    "_testcapi/hash.c",
+    "_testcapi/time.c",
+    "_testcapi/bytes.c",
+    "_testcapi/object.c",
+    "_testcapi/monitoring.c",
 ]
 
 def _test_3_13_14(version):
@@ -430,6 +468,13 @@ def _test_3_13_14(version):
             "_testinternalcapi/set.c",
             "_testinternalcapi/test_critical_sections.c",
         ] + (["_testinternalcapi/complex.c"] if version == "3.14" else []), "test"),
+        _module("_testcapi", _TESTCAPI_3_13_SOURCES + ([
+            "_testcapi/config.c",
+            "_testcapi/import.c",
+            "_testcapi/frame.c",
+            "_testcapi/type.c",
+            "_testcapi/function.c",
+        ] if version == "3.14" else []), "test"),
         _module("_testlimitedcapi", [
             "_testlimitedcapi.c",
             "_testlimitedcapi/abstract.c",

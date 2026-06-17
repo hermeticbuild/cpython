@@ -1,6 +1,7 @@
 load("@bazel_lib//lib:copy_file.bzl", "copy_file")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@bazel_lib//lib:run_binary.bzl", "run_binary")
+load("@cpython//python/private:build_details.bzl", "cpython_build_details")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
@@ -90,6 +91,11 @@ WINDOWS_LINK_LIBRARIES = [
     "ws2_32.lib",
 ] + (["Rpcrt4.lib"] if PYTHON_VERSION != "3.11" else [])
 
+WINDOWS_STATIC_DEFINES = [
+    "MS_NO_COREDLL=1",
+    "Py_NO_ENABLE_SHARED=1",
+]
+
 PLATFORM_LINKOPTS = select({
     ":darwin_arm64": [
         "-framework",
@@ -122,8 +128,14 @@ PLATFORM_LINKOPTS = select({
 })
 
 PYTHON_LINKOPTS = PLATFORM_LINKOPTS + select({
-    ":darwin_arm64": ["-Wl,-stack_size,1000000"],
-    ":darwin_x86_64": ["-Wl,-stack_size,1000000"],
+    ":darwin_arm64": [
+        "-Wl,-export_dynamic",
+        "-Wl,-stack_size,1000000",
+    ],
+    ":darwin_x86_64": [
+        "-Wl,-export_dynamic",
+        "-Wl,-stack_size,1000000",
+    ],
     ":linux_arm64": [],
     ":linux_x86_64": [],
     ":windows_arm64": [],
@@ -335,6 +347,11 @@ cc_library(
         ":windows_x86_64": ["PC"],
         "//conditions:default": [],
     }),
+    defines = select({
+        ":windows_arm64": WINDOWS_STATIC_DEFINES,
+        ":windows_x86_64": WINDOWS_STATIC_DEFINES,
+        "//conditions:default": [],
+    }),
     textual_hdrs = glob(
         [
             "Modules/**/*.inc",
@@ -356,17 +373,6 @@ cc_library(
     srcs = ["@cpython//python/private:pyconfig_contract.c"],
     copts = C_STANDARD_COPTS,
     deps = [":headers"],
-    local_defines = select({
-        ":windows_arm64": [
-            "MS_NO_COREDLL=1",
-            "Py_NO_ENABLE_SHARED=1",
-        ],
-        ":windows_x86_64": [
-            "MS_NO_COREDLL=1",
-            "Py_NO_ENABLE_SHARED=1",
-        ],
-        "//conditions:default": [],
-    }),
 )
 
 CORE_SOURCES = glob([
@@ -449,14 +455,10 @@ COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
         "-DSOABI=\\\"%s-x86_64-linux-gnu\\\"" % PYTHON_SOABI,
     ],
     ":windows_arm64": [
-        "-DMS_NO_COREDLL=1",
         "-DPY3_DLLNAME=L\\\"python3\\\"",
-        "-DPy_NO_ENABLE_SHARED=1",
     ],
     ":windows_x86_64": [
-        "-DMS_NO_COREDLL=1",
         "-DPY3_DLLNAME=L\\\"python3\\\"",
-        "-DPy_NO_ENABLE_SHARED=1",
     ],
 })
 
@@ -640,8 +642,8 @@ NATIVE_TEST_PROGRAMS = native_test_programs(
 copy_to_directory(
     name = "runtime_stdlib",
     srcs = glob(["Lib/**"]) + [":sysconfig_data"] + select({
-        ":darwin_arm64": [],
-        ":darwin_x86_64": [],
+        ":darwin_arm64": SHARED_TEST_EXTENSIONS,
+        ":darwin_x86_64": SHARED_TEST_EXTENSIONS,
         ":linux_arm64": SHARED_TEST_EXTENSIONS,
         ":linux_x86_64": SHARED_TEST_EXTENSIONS,
         ":windows_arm64": [],
@@ -685,23 +687,35 @@ copy_file(
     out = "runtime/pybuilddir.txt",
 )
 
+PYTHON_RUNTIME_DATA = [
+    ":runtime_include",
+    ":runtime_makefile",
+    ":runtime_pybuilddir",
+    ":runtime_pyconfig",
+    ":runtime_setup_local",
+    ":runtime_stdlib",
+] + NATIVE_TEST_PROGRAMS
+
+PYTHON_RUNTIME_DEPS = [
+    ":headers",
+    ":python_frozen",
+    ":python_runtime_core",
+]
+
+BUILD_DETAILS = cpython_build_details(
+    version = PYTHON_VERSION,
+    core_copts = CORE_COPTS,
+    linkopts = PYTHON_LINKOPTS,
+    runtime_data = PYTHON_RUNTIME_DATA,
+    runtime_deps = PYTHON_RUNTIME_DEPS,
+)
+
 cc_binary(
     name = "runtime/python",
     srcs = ["Programs/python.c"],
     copts = CORE_COPTS,
-    data = [
-        ":runtime_include",
-        ":runtime_makefile",
-        ":runtime_pybuilddir",
-        ":runtime_pyconfig",
-        ":runtime_setup_local",
-        ":runtime_stdlib",
-    ] + NATIVE_TEST_PROGRAMS,
-    deps = [
-        ":headers",
-        ":python_frozen",
-        ":python_runtime_core",
-    ],
+    data = PYTHON_RUNTIME_DATA + BUILD_DETAILS.runtime_data,
+    deps = PYTHON_RUNTIME_DEPS,
     linkopts = PYTHON_LINKOPTS,
 )
 
@@ -761,7 +775,7 @@ copy_to_directory(
 
 filegroup(
     name = "source_build_test_data",
-    srcs = [
+    srcs = BUILD_DETAILS.test_data + [
         ":runtime_test_doc",
         ":runtime_test_makefile_pre_in",
         ":runtime_test_objects",

@@ -170,7 +170,10 @@ def bundled_libraries(
         ],
         deps = [python_headers],
         includes = ["Modules/expat"],
-        linkopts = ["-lm"],
+        linkopts = select({
+            "@platforms//os:windows": [],
+            "//conditions:default": ["-lm"],
+        }),
         visibility = visibility,
     )
 
@@ -185,7 +188,10 @@ def bundled_libraries(
         ],
         deps = [python_headers],
         includes = ["Modules/_decimal/libmpdec"],
-        linkopts = ["-lm"],
+        linkopts = select({
+            "@platforms//os:windows": [],
+            "//conditions:default": ["-lm"],
+        }),
         visibility = visibility,
     )
 

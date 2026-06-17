@@ -2,42 +2,6 @@
 
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
-_TESTCAPI_3_13_SOURCES = [
-    "Modules/_testcapimodule.c",
-    "Modules/_testcapi/vectorcall.c",
-    "Modules/_testcapi/heaptype.c",
-    "Modules/_testcapi/abstract.c",
-    "Modules/_testcapi/unicode.c",
-    "Modules/_testcapi/dict.c",
-    "Modules/_testcapi/set.c",
-    "Modules/_testcapi/list.c",
-    "Modules/_testcapi/tuple.c",
-    "Modules/_testcapi/getargs.c",
-    "Modules/_testcapi/datetime.c",
-    "Modules/_testcapi/docstring.c",
-    "Modules/_testcapi/mem.c",
-    "Modules/_testcapi/watchers.c",
-    "Modules/_testcapi/long.c",
-    "Modules/_testcapi/float.c",
-    "Modules/_testcapi/complex.c",
-    "Modules/_testcapi/numbers.c",
-    "Modules/_testcapi/structmember.c",
-    "Modules/_testcapi/exceptions.c",
-    "Modules/_testcapi/code.c",
-    "Modules/_testcapi/buffer.c",
-    "Modules/_testcapi/pyatomic.c",
-    "Modules/_testcapi/run.c",
-    "Modules/_testcapi/file.c",
-    "Modules/_testcapi/codec.c",
-    "Modules/_testcapi/immortal.c",
-    "Modules/_testcapi/gc.c",
-    "Modules/_testcapi/hash.c",
-    "Modules/_testcapi/time.c",
-    "Modules/_testcapi/bytes.c",
-    "Modules/_testcapi/object.c",
-    "Modules/_testcapi/monitoring.c",
-]
-
 _COMMON_EXTENSIONS = {
     "_ctypes_test": {
         "core_module": False,
@@ -74,10 +38,6 @@ _VERSION_EXTENSIONS = {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],
         },
-        "_testcapi": {
-            "core_module": True,
-            "srcs": _TESTCAPI_3_13_SOURCES,
-        },
         "_testexternalinspection": {
             "core_module": True,
             "srcs": ["Modules/_testexternalinspection.c"],
@@ -92,7 +52,7 @@ _VERSION_EXTENSIONS = {
 }
 
 def shared_test_extensions(version, headers = ":headers"):
-    """Defines Linux shared test extensions and returns their target labels.
+    """Defines POSIX shared test extensions and returns their target labels.
 
     The xxlimited sources define their own Py_LIMITED_API values. Python 3.13's
     _testimportmultiple.c also defines Py_LIMITED_API. The other public
@@ -117,8 +77,8 @@ def shared_test_extensions(version, headers = ":headers"):
         extension = extensions[module_name]
         output = module_name + ".so"
 
-        # The shared extension retains undefined Python API symbols. The
-        # --export-dynamic Python interpreter resolves those symbols at dlopen.
+        # The shared extension retains undefined Python API symbols. The Python
+        # interpreter resolves those symbols when it loads the extension.
         cc_binary(
             name = output,
             srcs = extension["srcs"],
@@ -128,8 +88,16 @@ def shared_test_extensions(version, headers = ":headers"):
             ],
             deps = [headers],
             linkshared = True,
+            linkopts = select({
+                "@platforms//os:macos": ["-Wl,-undefined,dynamic_lookup"],
+                "//conditions:default": [],
+            }),
             local_defines = ["Py_BUILD_CORE_MODULE=1"] if extension["core_module"] else [],
-            target_compatible_with = ["@platforms//os:linux"],
+            target_compatible_with = select({
+                "@platforms//os:linux": [],
+                "@platforms//os:macos": [],
+                "//conditions:default": ["@platforms//:incompatible"],
+            }),
             visibility = ["//visibility:public"],
         )
         outputs.append(":" + output)

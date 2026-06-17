@@ -23,7 +23,7 @@ def _cpython_source_repository_impl(repository_ctx):
         repository_ctx.patch(patch, strip = 1)
     repository_ctx.symlink(repository_ctx.attr.build_file, "BUILD.bazel")
     repository_ctx.file("Modules/Setup.local", "")
-    repository_ctx.file("pybuilddir.txt", ".\n")
+    repository_ctx.file("pybuilddir.txt", ".")
     version_parts = repository_ctx.attr.release.split(".")
     minor = ".".join(version_parts[:2])
     cpython_tag = "cpython-{}{}".format(version_parts[0], version_parts[1])
