@@ -427,8 +427,8 @@ COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
 })
 
 CORE_COPTS = ["-DPy_BUILD_CORE=1"] + COMMON_COPTS + select({
-    ":windows_arm64": ["-DVPATH=\".\""],
-    ":windows_x86_64": ["-DVPATH=\".\""],
+    ":windows_arm64": ["-DVPATH=\\\".\\\""],
+    ":windows_x86_64": ["-DVPATH=\\\".\\\""],
     "//conditions:default": [],
 })
 
