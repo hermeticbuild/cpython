@@ -20,6 +20,12 @@ def cpython_build_details(version, runtime_data, runtime_deps, core_copts, linko
     if version != "3.14":
         return struct(runtime_data = [], test_data = [])
 
+    posix_target_compatible_with = select({
+        "@platforms//os:linux": [],
+        "@platforms//os:macos": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    })
+
     cc_binary(
         name = "runtime/python_for_build_details",
         srcs = ["Programs/python.c"],
@@ -27,6 +33,7 @@ def cpython_build_details(version, runtime_data, runtime_deps, core_copts, linko
         data = runtime_data,
         deps = runtime_deps,
         linkopts = linkopts,
+        target_compatible_with = posix_target_compatible_with,
     )
 
     run_binary(
@@ -42,6 +49,7 @@ def cpython_build_details(version, runtime_data, runtime_deps, core_copts, linko
             "$(execpath runtime/build-details.json)",
         ],
         execution_requirements = {"no-remote-exec": "1"},
+        target_compatible_with = posix_target_compatible_with,
         tool = "@cpython//python/private:generate_build_details",
     )
 
@@ -50,6 +58,7 @@ def cpython_build_details(version, runtime_data, runtime_deps, core_copts, linko
         srcs = ["Tools/build/generate-build-details.py"],
         out = "runtime/Tools",
         root_paths = ["Tools"],
+        target_compatible_with = posix_target_compatible_with,
     )
 
     return struct(
