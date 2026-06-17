@@ -1,1 +1,4 @@
-exports_files(["winapi-previous-token-size.patch"])
+exports_files([
+    "multiprocessing-semaphore-value-type.patch",
+    "winapi-previous-token-size.patch",
+])

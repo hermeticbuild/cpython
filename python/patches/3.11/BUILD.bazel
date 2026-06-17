@@ -1,6 +1,7 @@
 exports_files([
     "getpath-generated-header.patch",
     "libmpdec-clang-cl.patch",
+    "multiprocessing-semaphore-value-type.patch",
     "pyconfig-clang-cl.patch",
     "timeval-clang-cl.patch",
     "tracemalloc-clang-cl-pack.patch",

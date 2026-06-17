@@ -1,0 +1,5 @@
+--- a/Modules/_multiprocessing/semaphore.c
++++ b/Modules/_multiprocessing/semaphore.c
+@@ -61 +61 @@
+-_GetSemaphoreValue(HANDLE handle, long *value)
++_GetSemaphoreValue(HANDLE handle, int *value)

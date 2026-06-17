@@ -10,6 +10,7 @@ _PATCHES = {
     "3.11": [
         Label("//python/patches/3.11:getpath-generated-header.patch"),
         Label("//python/patches/3.11:libmpdec-clang-cl.patch"),
+        Label("//python/patches/3.11:multiprocessing-semaphore-value-type.patch"),
         Label("//python/patches/3.11:pyconfig-clang-cl.patch"),
         Label("//python/patches/3.11:timeval-clang-cl.patch"),
         Label("//python/patches/3.11:tracemalloc-clang-cl-pack.patch"),
@@ -19,10 +20,14 @@ _PATCHES = {
     ],
     "3.12": [
         Label("//python/patches/3.12:getpath-generated-header.patch"),
+        Label("//python/patches/3.12:multiprocessing-semaphore-value-type.patch"),
         Label("//python/patches/3.12:winapi-previous-token-size.patch"),
         Label("//python/patches/common:atomic-clang-cl-casts.patch"),
     ],
-    "3.13": [Label("//python/patches/3.13:winapi-previous-token-size.patch")],
+    "3.13": [
+        Label("//python/patches/3.13:multiprocessing-semaphore-value-type.patch"),
+        Label("//python/patches/3.13:winapi-previous-token-size.patch"),
+    ],
     "3.14": [],
 }
 
