@@ -450,10 +450,12 @@ COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
     ],
     ":windows_arm64": [
         "-DMS_NO_COREDLL=1",
+        "-DPY3_DLLNAME=L\\\"python3\\\"",
         "-DPy_NO_ENABLE_SHARED=1",
     ],
     ":windows_x86_64": [
         "-DMS_NO_COREDLL=1",
+        "-DPY3_DLLNAME=L\\\"python3\\\"",
         "-DPy_NO_ENABLE_SHARED=1",
     ],
 })
