@@ -1,0 +1,11 @@
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -428,8 +428,6 @@
+ })
+ 
+ COMMON_WINDOWS_DEFINES = [
+-    "_WINSOCKAPI_",
+-    "OPENSSL_SYS_WINCE",
+     "WIN32_LEAN_AND_MEAN",
+ ]
+ 

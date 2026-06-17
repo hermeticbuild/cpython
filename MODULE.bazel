@@ -20,6 +20,13 @@ bazel_dep(name = "windows_support", version = "0.2.0")
 bazel_dep(name = "xz", version = "5.4.5.bcr.8")
 bazel_dep(name = "zlib", version = "1.3.2")
 
+single_version_override(
+    module_name = "openssl",
+    patch_strip = 1,
+    patches = ["//python/patches/openssl:windows-defines.patch"],
+    version = "3.5.5.bcr.4",
+)
+
 archive_override(
     module_name = "llvm",
     integrity = "sha256-sSr0NUsY06DQwPoxgh+drMpOkeG/N7Lx+KxWkZTFUDM=",
