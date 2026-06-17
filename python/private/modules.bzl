@@ -33,7 +33,8 @@ def _module(
         deps = [],
         linkopts = [],
         platform = "all",
-        source_root = "Modules"):
+        source_root = "Modules",
+        windows_sources = []):
     return struct(
         category = category,
         copts = copts,
@@ -44,6 +45,10 @@ def _module(
         name = name,
         platform = platform,
         sources = ["{}/{}".format(source_root, source) for source in sources],
+        windows_sources = [
+            "{}/{}".format(source_root, source)
+            for source in windows_sources
+        ],
     )
 
 _BOOTSTRAP_PREFIX = [
@@ -67,7 +72,7 @@ _BOOTSTRAP_IMPORT = [
         "_io/bufferedio.c",
         "_io/textio.c",
         "_io/stringio.c",
-    ], "bootstrap"),
+    ], "bootstrap", windows_sources = ["_io/winconsoleio.c"]),
     _module("itertools", ["itertoolsmodule.c"], "bootstrap"),
     _module("_sre", ["_sre/sre.c"], "bootstrap"),
 ]
@@ -558,6 +563,7 @@ def cpython_static_module_manifest(version):
             platform = module.platform,
             sources = module.sources,
             version = version,
+            windows_sources = module.windows_sources,
         ))
     return result
 
@@ -773,7 +779,10 @@ def declare_cpython_static_modules(
 
         cc_library(
             name = target_names[module.name],
-            srcs = module.sources,
+            srcs = module.sources + select({
+                ":{}".format(windows_setting): module.windows_sources,
+                "//conditions:default": [],
+            }),
             alwayslink = True,
             copts = module.copts + copts,
             deps = module_deps,

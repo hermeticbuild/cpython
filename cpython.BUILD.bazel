@@ -387,14 +387,35 @@ CORE_SOURCES = glob([
     "Python/emscripten_trampoline.c",
     "Python/emscripten_trampoline_inner.c",
     "Python/frozen.c",
+    "Python/frozenmain.c",
     "Python/optimizer_bytecodes.c",
 ]) + select({
-    ":darwin_arm64": ["Python/dynload_shlib.c"],
-    ":darwin_x86_64": ["Python/dynload_shlib.c"],
-    ":linux_arm64": ["Python/dynload_shlib.c"],
-    ":linux_x86_64": ["Python/dynload_shlib.c"],
-    ":windows_arm64": ["Python/dynload_win.c"],
-    ":windows_x86_64": ["Python/dynload_win.c"],
+    ":darwin_arm64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":darwin_x86_64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":linux_arm64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":linux_x86_64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":windows_arm64": [
+        "PC/dl_nt.c",
+        "PC/invalid_parameter_handler.c",
+        "Python/dynload_win.c",
+    ],
+    ":windows_x86_64": [
+        "PC/dl_nt.c",
+        "PC/invalid_parameter_handler.c",
+        "Python/dynload_win.c",
+    ],
 }) + [
     "Modules/gcmodule.c",
     "Modules/getbuildinfo.c",
