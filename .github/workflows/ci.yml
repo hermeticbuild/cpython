@@ -14,11 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-cache: true
-          repository-cache: true
-
       - name: Check configure audit
         run: tools/configure_check_audit.sh --check
 
@@ -65,11 +60,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-cache: true
-          repository-cache: true
 
       - name: Test CPython repositories
         shell: bash
