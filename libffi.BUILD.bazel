@@ -1,4 +1,4 @@
-load("@bazel_lib//lib:expand_template.bzl", "expand_template")
+load("@cpython//python/private/libffi:config.bzl", "libffi_config")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -61,67 +61,22 @@ config_setting(
     ],
 )
 
-expand_template(
-    name = "ffi_h",
-    out = "ffi.h",
-    substitutions = select({
-        ":darwin_arm64": {
-            "@FFI_EXEC_TRAMPOLINE_TABLE@": "1",
-            "@HAVE_LONG_DOUBLE@": "0",
-            "@TARGET@": "AARCH64",
-            "@VERSION@": "3.4.7",
-        },
-        ":darwin_x86_64": {
-            "@FFI_EXEC_TRAMPOLINE_TABLE@": "0",
-            "@HAVE_LONG_DOUBLE@": "1",
-            "@TARGET@": "X86_64",
-            "@VERSION@": "3.4.7",
-        },
-        ":linux_arm64": {
-            "@FFI_EXEC_TRAMPOLINE_TABLE@": "0",
-            "@HAVE_LONG_DOUBLE@": "1",
-            "@TARGET@": "AARCH64",
-            "@VERSION@": "3.4.7",
-        },
-        ":linux_x86_64": {
-            "@FFI_EXEC_TRAMPOLINE_TABLE@": "0",
-            "@HAVE_LONG_DOUBLE@": "1",
-            "@TARGET@": "X86_64",
-            "@VERSION@": "3.4.7",
-        },
-        ":windows_arm64": {
-            "@FFI_EXEC_TRAMPOLINE_TABLE@": "0",
-            "@HAVE_LONG_DOUBLE@": "0",
-            "@TARGET@": "ARM_WIN64",
-            "@VERSION@": "3.4.7",
-        },
-        ":windows_x86_64": {
-            "@FFI_EXEC_TRAMPOLINE_TABLE@": "0",
-            "@HAVE_LONG_DOUBLE@": "0",
-            "@TARGET@": "X86_WIN64",
-            "@VERSION@": "3.4.7",
-        },
-    }),
-    template = "include/ffi.h.in",
-)
+libffi_config(name = "libffi_config")
 
 cc_library(
     name = "libffi",
+    copts = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": ["-fexceptions"],
+    }),
     defines = select({
-        ":darwin_arm64": ["FFI_EXEC_TRAMPOLINE_TABLE=1"],
-        ":windows_arm64": [
-            "FFI_EXEC_TRAMPOLINE_TABLE=0",
-            "FFI_STATIC_BUILD=1",
-        ],
-        ":windows_x86_64": [
-            "FFI_EXEC_TRAMPOLINE_TABLE=0",
-            "FFI_STATIC_BUILD=1",
-        ],
-        "//conditions:default": ["FFI_EXEC_TRAMPOLINE_TABLE=0"],
+        ":windows_arm64": ["FFI_STATIC_BUILD=1"],
+        ":windows_x86_64": ["FFI_STATIC_BUILD=1"],
+        "//conditions:default": [],
     }),
     srcs = [
         "src/closures.c",
-        "src/debug.c",
         "src/java_raw_api.c",
         "src/prep_cif.c",
         "src/raw_api.c",
@@ -149,17 +104,20 @@ cc_library(
             "src/x86/win64.S",
         ],
         ":windows_arm64": [
+            # configure.host classifies clang-cl as Clang and selects sysv.S.
             "src/aarch64/ffi.c",
             "src/aarch64/sysv.S",
         ],
         ":windows_x86_64": [
+            # configure.host classifies clang-cl as Clang and selects win64.S.
             "src/x86/ffiw64.c",
             "src/x86/win64.S",
         ],
         "//conditions:default": [],
     }),
     hdrs = [
-        ":ffi_h",
+        ":libffi_config_ffi_h",
+        ":libffi_config_fficonfig_h",
         "include/ffi_cfi.h",
         "include/ffi_common.h",
         "include/tramp.h",
@@ -183,6 +141,14 @@ cc_library(
         ":arm64": ["src/aarch64"],
         ":x86_64": ["src/x86"],
     }),
+    target_compatible_with = select({
+        ":darwin_arm64": [],
+        ":darwin_x86_64": [],
+        ":linux_arm64": [],
+        ":linux_x86_64": [],
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
     textual_hdrs = ["src/dlmalloc.c"],
-    deps = ["@cpython//python/private/libffi:config"],
 )
