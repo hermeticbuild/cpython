@@ -1,0 +1,21 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+
+exports_files([
+    "bundled_libraries.bzl",
+    "deepfreeze.bzl",
+    "modules.bzl",
+    "pyconfig.bzl",
+    "pyconfig_contract.c",
+    "repositories.bzl",
+    "shared_extensions.bzl",
+    "test_programs.bzl",
+    "upstream_test.sh",
+    "upstream_tests.bzl",
+    "versions.bzl",
+])
+
+sh_binary(
+    name = "deepfreeze",
+    srcs = ["deepfreeze.sh"],
+    visibility = ["//visibility:public"],
+)

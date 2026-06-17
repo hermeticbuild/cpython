@@ -1,0 +1,25 @@
+module(
+    name = "cpython_integration_test",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "cpython", version = "0.0.0")
+bazel_dep(name = "rules_shell", version = "0.6.1")
+
+local_path_override(
+    module_name = "cpython",
+    path = "../..",
+)
+
+python = use_extension("@cpython//python:extensions.bzl", "python")
+python.version(version = "3.14")
+python.version(version = "3.13")
+python.version(version = "3.12")
+python.version(version = "3.11")
+use_repo(
+    python,
+    "python3_11",
+    "python3_12",
+    "python3_13",
+    "python3_14",
+)

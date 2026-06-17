@@ -1,0 +1,5 @@
+--- a/Modules/getpath.c
++++ b/Modules/getpath.c
+@@ -22 +22 @@
+-#include "../Python/frozen_modules/getpath.h"
++#include "Python/frozen_modules/getpath.h"

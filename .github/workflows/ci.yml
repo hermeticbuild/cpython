@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            runner: ubuntu-24.04
+            platform: "@llvm//platforms:linux_x86_64"
+            remote: true
+            bazel_sh: /bin/bash
+          - name: Linux arm64
+            runner: ubuntu-24.04-arm
+            platform: "@llvm//platforms:linux_aarch64"
+            remote: true
+            bazel_sh: /bin/bash
+          - name: macOS x86_64
+            runner: macos-15-intel
+            platform: "@llvm//platforms:macos_x86_64"
+            remote: true
+            bazel_sh: /bin/bash
+          - name: macOS arm64
+            runner: macos-15
+            platform: "@llvm//platforms:macos_aarch64"
+            remote: true
+            bazel_sh: /bin/bash
+          - name: Windows x86_64
+            runner: windows-2025
+            platform: "@llvm//platforms:windows_x86_64_msvc"
+            remote: false
+            bazel_sh: C:\Program Files\Git\bin\bash.exe
+          - name: Windows arm64
+            runner: windows-11-arm
+            platform: "@llvm//platforms:windows_aarch64_msvc"
+            remote: false
+            bazel_sh: C:\Program Files\Git\bin\bash.exe
+
+    env:
+      BAZEL_SH: ${{ matrix.bazel_sh }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+
+      - name: Test CPython repositories
+        shell: bash
+        run: |
+          bazel_args=(--config=ci)
+          if [[ "${{ matrix.remote }}" == "true" ]]; then
+            bazel_args+=(--config=remote)
+          else
+            bazel_args+=(--jobs=2)
+          fi
+          bazel_args+=(
+            "--platforms=${{ matrix.platform }}"
+            --strategy=TestRunner=local
+          )
+          bazel test "${bazel_args[@]}" \
+            @python3_11//... \
+            @python3_12//... \
+            @python3_13//... \
+            @python3_14//...

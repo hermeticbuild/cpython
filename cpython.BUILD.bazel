@@ -1,0 +1,699 @@
+load("@bazel_lib//lib:copy_file.bzl", "copy_file")
+load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("@bazel_lib//lib:run_binary.bzl", "run_binary")
+load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
+load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
+load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
+load("@cpython//python/private:pyconfig.bzl", "pyconfig")
+load("@cpython//python/private:shared_extensions.bzl", "shared_test_extensions")
+load("@cpython//python/private:test_programs.bzl", "native_test_programs")
+load("@cpython//python/private:upstream_tests.bzl", "upstream_regrtests")
+load("@cpython//python/private/sysconfig:sysconfig.bzl", "cpython_sysconfig", "merge_sysconfig_build_vars")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//bazel:release.bzl", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_SOABI", "PYTHON_VERSION")
+
+package(default_visibility = ["//visibility:public"])
+
+config_setting(
+    name = "darwin_arm64",
+    constraint_values = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:macos",
+    ],
+)
+
+config_setting(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:linux",
+    ],
+)
+
+config_setting(
+    name = "darwin_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:macos",
+    ],
+)
+
+config_setting(
+    name = "linux_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
+config_setting(
+    name = "windows_arm64",
+    constraint_values = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:windows",
+    ],
+)
+
+config_setting(
+    name = "windows_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+    ],
+)
+
+C_STANDARD_COPTS = select({
+    ":windows_arm64": ["/std:c11"],
+    ":windows_x86_64": ["/std:c11"],
+    "//conditions:default": ["-std=c11"],
+})
+
+OPTIMIZATION_COPTS = select({
+    ":windows_arm64": ["/O2"],
+    ":windows_x86_64": ["/O2"],
+    "//conditions:default": ["-O3"],
+})
+
+PLATFORM_LINKOPTS = select({
+    ":darwin_arm64": [
+        "-framework",
+        "CoreFoundation",
+        "-lm",
+    ],
+    ":linux_arm64": [
+        "-ldl",
+        "-lm",
+        "-lpthread",
+        "-lrt",
+        "-lutil",
+        "-Wl,--export-dynamic",
+    ],
+    ":darwin_x86_64": [
+        "-framework",
+        "CoreFoundation",
+        "-lm",
+    ],
+    ":linux_x86_64": [
+        "-ldl",
+        "-lm",
+        "-lpthread",
+        "-lrt",
+        "-lutil",
+        "-Wl,--export-dynamic",
+    ],
+    ":windows_arm64": [
+        "bcrypt.lib",
+        "pathcch.lib",
+        "version.lib",
+        "ws2_32.lib",
+    ],
+    ":windows_x86_64": [
+        "bcrypt.lib",
+        "pathcch.lib",
+        "version.lib",
+        "ws2_32.lib",
+    ],
+})
+
+PYTHON_LINKOPTS = PLATFORM_LINKOPTS + select({
+    ":darwin_arm64": ["-Wl,-stack_size,1000000"],
+    ":darwin_x86_64": ["-Wl,-stack_size,1000000"],
+    ":linux_arm64": [],
+    ":linux_x86_64": [],
+    ":windows_arm64": [],
+    ":windows_x86_64": [],
+})
+
+pyconfig(
+    name = "pyconfig_h",
+    version = PYTHON_VERSION,
+)
+
+copy_file(
+    name = "sqlite3_header",
+    src = "@sqlite3//:sqlite3.h",
+    out = "sqlite3.h",
+)
+
+cc_library(
+    name = "hermetic_sqlite3",
+    srcs = ["@sqlite3//:sqlite3.c"],
+    hdrs = [":sqlite3_header"],
+    defines = ["SQLITE_ENABLE_FTS4=1"],
+)
+
+SYSCONFIG_PREFIX = "/python"
+SYSCONFIG_LIBDEST = "{}/lib/python{}".format(SYSCONFIG_PREFIX, PYTHON_VERSION)
+SYSCONFIG_INCLUDEPY = "{}/include/python{}".format(SYSCONFIG_PREFIX, PYTHON_VERSION)
+SYSCONFIG_COMMON_BUILD_VARS = {
+    "ABIFLAGS": "",
+    "AR": "llvm-ar",
+    "ARFLAGS": "rcs",
+    "BINDIR": "{}/bin".format(SYSCONFIG_PREFIX),
+    "BINLIBDEST": SYSCONFIG_LIBDEST,
+    "CC": "clang",
+    "CCSHARED": "-fPIC",
+    "CFLAGS": "-std=c11 -fwrapv -O3 -DNDEBUG",
+    "CFLAGSFORSHARED": "-fPIC",
+    "CFLAGS_NODIST": "",
+    "CONFIG_ARGS": "",
+    "CONFINCLUDEDIR": SYSCONFIG_INCLUDEPY,
+    "CONFINCLUDEPY": SYSCONFIG_INCLUDEPY,
+    "DESTLIB": SYSCONFIG_LIBDEST,
+    "DESTSHARED": "{}/lib-dynload".format(SYSCONFIG_LIBDEST),
+    "EXE": "",
+    "INCLUDEDIR": "{}/include".format(SYSCONFIG_PREFIX),
+    "INCLUDEPY": SYSCONFIG_INCLUDEPY,
+    "LDFLAGS": "",
+    "LDLIBRARY": "libpython{}.a".format(PYTHON_VERSION),
+    "LDSHARED": "clang -shared",
+    "LIBDEST": SYSCONFIG_LIBDEST,
+    "LIBDIR": "{}/lib".format(SYSCONFIG_PREFIX),
+    "LIBRARY": "libpython{}.a".format(PYTHON_VERSION),
+    "OBJEXT": ".o",
+    "PLATLIBDIR": "lib",
+    "PY_CFLAGS": "-std=c11 -fwrapv -O3 -DNDEBUG",
+    "PY_CFLAGS_NODIST": "",
+    "PY_LDFLAGS": "",
+    "SHLIB_SUFFIX": ".so",
+    "VERSION": PYTHON_VERSION,
+    "VPATH": ".",
+    "exec_prefix": SYSCONFIG_PREFIX,
+    "prefix": SYSCONFIG_PREFIX,
+    "srcdir": ".",
+}
+
+cpython_sysconfig(
+    name = "generated_sysconfig",
+    build_vars = select({
+        ":darwin_arm64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+            "BLDSHARED": "clang -shared",
+            "EXT_SUFFIX": ".{}-darwin.so".format(PYTHON_SOABI),
+            "LIBM": "-lm",
+            "LIBPL": "{}/config-{}-darwin".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+            "LIBS": "-lm",
+            "LINKFORSHARED": "-Wl,-stack_size,1000000 -framework CoreFoundation",
+            "MACHDEP": "darwin",
+            "MULTIARCH": "darwin",
+            "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"darwin\\\"",
+            "SOABI": "{}-darwin".format(PYTHON_SOABI),
+        }),
+        ":darwin_x86_64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+            "BLDSHARED": "clang -shared",
+            "EXT_SUFFIX": ".{}-darwin.so".format(PYTHON_SOABI),
+            "LIBM": "-lm",
+            "LIBPL": "{}/config-{}-darwin".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+            "LIBS": "-lm",
+            "LINKFORSHARED": "-Wl,-stack_size,1000000 -framework CoreFoundation",
+            "MACHDEP": "darwin",
+            "MULTIARCH": "darwin",
+            "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"darwin\\\"",
+            "SOABI": "{}-darwin".format(PYTHON_SOABI),
+        }),
+        ":linux_arm64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+            "BLDSHARED": "clang -shared",
+            "EXT_SUFFIX": ".{}-aarch64-linux-gnu.so".format(PYTHON_SOABI),
+            "LIBM": "-lm",
+            "LIBPL": "{}/config-{}-aarch64-linux-gnu".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+            "LIBS": "-ldl -lm -lpthread -lrt -lutil",
+            "LINKFORSHARED": "-Wl,--export-dynamic",
+            "MACHDEP": "linux",
+            "MULTIARCH": "aarch64-linux-gnu",
+            "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"aarch64-linux-gnu\\\"",
+            "SOABI": "{}-aarch64-linux-gnu".format(PYTHON_SOABI),
+        }),
+        ":linux_x86_64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+            "BLDSHARED": "clang -shared",
+            "EXT_SUFFIX": ".{}-x86_64-linux-gnu.so".format(PYTHON_SOABI),
+            "LIBM": "-lm",
+            "LIBPL": "{}/config-{}-x86_64-linux-gnu".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+            "LIBS": "-ldl -lm -lpthread -lrt -lutil",
+            "LINKFORSHARED": "-Wl,--export-dynamic",
+            "MACHDEP": "linux",
+            "MULTIARCH": "x86_64-linux-gnu",
+            "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"x86_64-linux-gnu\\\"",
+            "SOABI": "{}-x86_64-linux-gnu".format(PYTHON_SOABI),
+        }),
+        ":windows_arm64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+            "AR": "llvm-lib",
+            "BLDSHARED": "lld-link /DLL",
+            "CC": "clang-cl",
+            "CCSHARED": "",
+            "CFLAGS": "/std:c11 /O2 /DNDEBUG",
+            "CFLAGSFORSHARED": "",
+            "EXE": ".exe",
+            "EXT_SUFFIX": ".pyd",
+            "LDSHARED": "lld-link /DLL",
+            "LIBM": "",
+            "LIBPL": "{}/config-{}-arm64-windows".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+            "LIBS": "bcrypt.lib pathcch.lib version.lib ws2_32.lib",
+            "MACHDEP": "win32",
+            "MULTIARCH": "win-arm64",
+            "MULTIARCH_CPPFLAGS": "",
+            "OBJEXT": ".obj",
+            "PY_CFLAGS": "/std:c11 /O2 /DNDEBUG",
+            "SHLIB_SUFFIX": ".pyd",
+            "SOABI": "",
+        }),
+        ":windows_x86_64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+            "AR": "llvm-lib",
+            "BLDSHARED": "lld-link /DLL",
+            "CC": "clang-cl",
+            "CCSHARED": "",
+            "CFLAGS": "/std:c11 /O2 /DNDEBUG",
+            "CFLAGSFORSHARED": "",
+            "EXE": ".exe",
+            "EXT_SUFFIX": ".pyd",
+            "LDSHARED": "lld-link /DLL",
+            "LIBM": "",
+            "LIBPL": "{}/config-{}-amd64-windows".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+            "LIBS": "bcrypt.lib pathcch.lib version.lib ws2_32.lib",
+            "MACHDEP": "win32",
+            "MULTIARCH": "win-amd64",
+            "MULTIARCH_CPPFLAGS": "",
+            "OBJEXT": ".obj",
+            "PY_CFLAGS": "/std:c11 /O2 /DNDEBUG",
+            "SHLIB_SUFFIX": ".pyd",
+            "SOABI": "",
+        }),
+    }),
+    makefile_template = "Makefile.pre.in",
+    multiarch = select({
+        ":darwin_arm64": "darwin",
+        ":darwin_x86_64": "darwin",
+        ":linux_arm64": "aarch64-linux-gnu",
+        ":linux_x86_64": "x86_64-linux-gnu",
+        ":windows_arm64": "win-arm64",
+        ":windows_x86_64": "win-amd64",
+    }),
+    platform = select({
+        ":darwin_arm64": "darwin",
+        ":darwin_x86_64": "darwin",
+        ":linux_arm64": "linux",
+        ":linux_x86_64": "linux",
+        ":windows_arm64": "windows",
+        ":windows_x86_64": "windows",
+    }),
+    pyconfig = ":pyconfig_h",
+)
+
+filegroup(
+    name = "sysconfig_data",
+    srcs = [":generated_sysconfig"],
+    output_group = "sysconfig_data",
+)
+
+filegroup(
+    name = "sysconfig_makefile",
+    srcs = [":generated_sysconfig"],
+    output_group = "makefile",
+)
+
+cc_library(
+    name = "headers",
+    hdrs = glob([
+        "Include/**/*.h",
+        "Modules/**/*.h",
+        "Objects/**/*.h",
+        "Parser/**/*.h",
+        "PC/**/*.h",
+        "Python/**/*.h",
+    ]) + [":pyconfig_h"],
+    includes = [
+        ".",
+        "Include",
+        "Include/internal",
+        "Modules",
+    ] + (["Include/internal/mimalloc"] if PYTHON_VERSION in ["3.13", "3.14"] else []) + select({
+        ":windows_arm64": ["PC"],
+        ":windows_x86_64": ["PC"],
+        "//conditions:default": [],
+    }),
+    textual_hdrs = glob(
+        [
+            "Modules/**/*.inc",
+            "Modules/_sha3/*.c",
+            "Modules/_ssl/*.c",
+            "Objects/*.inc",
+            "Objects/mimalloc/**/*.c",
+        ],
+        allow_empty = True,
+    ),
+)
+
+bundled_libraries(
+    version = PYTHON_VERSION,
+)
+
+cc_library(
+    name = "pyconfig_contract",
+    srcs = ["@cpython//python/private:pyconfig_contract.c"],
+    copts = C_STANDARD_COPTS,
+    deps = [":headers"],
+)
+
+CORE_SOURCES = glob([
+    "Objects/*.c",
+    "Parser/**/*.c",
+    "Python/*.c",
+], exclude = [
+    "Python/bytecodes.c",
+    "Python/_contextvars.c",
+    "Python/dup2.c",
+    "Python/dynload_hpux.c",
+    "Python/dynload_shlib.c",
+    "Python/dynload_stub.c",
+    "Python/dynload_win.c",
+    "Python/emscripten_signal.c",
+    "Python/emscripten_syscalls.c",
+    "Python/emscripten_trampoline.c",
+    "Python/emscripten_trampoline_inner.c",
+    "Python/frozen.c",
+    "Python/optimizer_bytecodes.c",
+]) + select({
+    ":darwin_arm64": ["Python/dynload_shlib.c"],
+    ":darwin_x86_64": ["Python/dynload_shlib.c"],
+    ":linux_arm64": ["Python/dynload_shlib.c"],
+    ":linux_x86_64": ["Python/dynload_shlib.c"],
+    ":windows_arm64": ["Python/dynload_win.c"],
+    ":windows_x86_64": ["Python/dynload_win.c"],
+}) + [
+    "Modules/gcmodule.c",
+    "Modules/getbuildinfo.c",
+    "Modules/main.c",
+]
+
+COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
+    "-fwrapv",
+    "-DNDEBUG",
+    "-DABIFLAGS=\\\"\\\"",
+    "-DPLATLIBDIR=\\\"lib\\\"",
+] + select({
+    ":darwin_arm64": [
+        "-DMULTIARCH=\\\"darwin\\\"",
+        "-DPLATFORM=\\\"darwin\\\"",
+        "-DSOABI=\\\"%s-darwin\\\"" % PYTHON_SOABI,
+    ],
+    ":darwin_x86_64": [
+        "-DMULTIARCH=\\\"darwin\\\"",
+        "-DPLATFORM=\\\"darwin\\\"",
+        "-DSOABI=\\\"%s-darwin\\\"" % PYTHON_SOABI,
+    ],
+    ":linux_arm64": [
+        "-DMULTIARCH=\\\"aarch64-linux-gnu\\\"",
+        "-DPLATFORM=\\\"linux\\\"",
+        "-DSOABI=\\\"%s-aarch64-linux-gnu\\\"" % PYTHON_SOABI,
+    ],
+    ":linux_x86_64": [
+        "-DMULTIARCH=\\\"x86_64-linux-gnu\\\"",
+        "-DPLATFORM=\\\"linux\\\"",
+        "-DSOABI=\\\"%s-x86_64-linux-gnu\\\"" % PYTHON_SOABI,
+    ],
+    ":windows_arm64": [
+        "-DMS_NO_COREDLL=1",
+        "-DPy_NO_ENABLE_SHARED=1",
+    ],
+    ":windows_x86_64": [
+        "-DMS_NO_COREDLL=1",
+        "-DPy_NO_ENABLE_SHARED=1",
+    ],
+})
+
+CORE_COPTS = ["-DPy_BUILD_CORE=1"] + COMMON_COPTS
+
+BOOTSTRAP_MODULES = declare_cpython_static_modules(
+    name = "python_bootstrap_modules",
+    version = PYTHON_VERSION,
+    categories = ["bootstrap"],
+    copts = COMMON_COPTS,
+    deps = [":headers"],
+)
+
+STATIC_MODULES = declare_cpython_static_modules(
+    name = "python_static_modules",
+    version = PYTHON_VERSION,
+    copts = COMMON_COPTS,
+    deps = [":headers"],
+    module_libraries = BOOTSTRAP_MODULES.module_libraries,
+)
+
+cc_library(
+    name = "python_core_no_frozen",
+    srcs = CORE_SOURCES,
+    copts = CORE_COPTS,
+    deps = [
+        ":headers",
+        ":pyconfig_contract",
+    ],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "_freeze_module",
+    srcs = [
+        "Modules/getpath_noop.c",
+        "Programs/_freeze_module.c",
+    ],
+    copts = CORE_COPTS,
+    deps = [
+        BOOTSTRAP_MODULES.library,
+        ":headers",
+        ":python_core_no_frozen",
+    ],
+    linkopts = PLATFORM_LINKOPTS,
+)
+
+FROZEN_MODULES = {
+    "Python/frozen_modules/__hello__.h": ("__hello__", "Lib/__hello__.py"),
+    "Python/frozen_modules/__phello__.h": ("__phello__", "Lib/__phello__/__init__.py"),
+    "Python/frozen_modules/__phello__.ham.eggs.h": ("__phello__.ham.eggs", "Lib/__phello__/ham/eggs.py"),
+    "Python/frozen_modules/__phello__.ham.h": ("__phello__.ham", "Lib/__phello__/ham/__init__.py"),
+    "Python/frozen_modules/__phello__.spam.h": ("__phello__.spam", "Lib/__phello__/spam.py"),
+    "Python/frozen_modules/_collections_abc.h": ("_collections_abc", "Lib/_collections_abc.py"),
+    "Python/frozen_modules/_sitebuiltins.h": ("_sitebuiltins", "Lib/_sitebuiltins.py"),
+    "Python/frozen_modules/abc.h": ("abc", "Lib/abc.py"),
+    "Python/frozen_modules/codecs.h": ("codecs", "Lib/codecs.py"),
+    "Python/frozen_modules/frozen_only.h": ("frozen_only", "Tools/freeze/flag.py"),
+    "Python/frozen_modules/genericpath.h": ("genericpath", "Lib/genericpath.py"),
+    "Python/frozen_modules/getpath.h": ("getpath", "Modules/getpath.py"),
+    "Python/frozen_modules/importlib._bootstrap.h": ("importlib._bootstrap", "Lib/importlib/_bootstrap.py"),
+    "Python/frozen_modules/importlib._bootstrap_external.h": ("importlib._bootstrap_external", "Lib/importlib/_bootstrap_external.py"),
+    "Python/frozen_modules/importlib.machinery.h": ("importlib.machinery", "Lib/importlib/machinery.py"),
+    "Python/frozen_modules/importlib.util.h": ("importlib.util", "Lib/importlib/util.py"),
+    "Python/frozen_modules/io.h": ("io", "Lib/io.py"),
+    "Python/frozen_modules/ntpath.h": ("ntpath", "Lib/ntpath.py"),
+    "Python/frozen_modules/os.h": ("os", "Lib/os.py"),
+    "Python/frozen_modules/posixpath.h": ("posixpath", "Lib/posixpath.py"),
+    "Python/frozen_modules/runpy.h": ("runpy", "Lib/runpy.py"),
+    "Python/frozen_modules/site.h": ("site", "Lib/site.py"),
+    "Python/frozen_modules/stat.h": ("stat", "Lib/stat.py"),
+    "Python/frozen_modules/zipimport.h": ("zipimport", "Lib/zipimport.py"),
+}
+
+[
+    run_binary(
+        name = "freeze_%s" % output[len("Python/frozen_modules/"):-len(".h")].replace(".", "_"),
+        args = [
+            module_name,
+            "$(execpath %s)" % source,
+            "$(execpath %s)" % output,
+        ],
+        srcs = [source],
+        outs = [output],
+        tool = ":_freeze_module",
+    )
+    for output, (module_name, source) in FROZEN_MODULES.items()
+]
+
+GETPATH_COPTS = [
+    "-DEXEC_PREFIX=\\\"/python\\\"",
+    "-DPLATLIBDIR=\\\"lib\\\"",
+    "-DPREFIX=\\\"/python\\\"",
+    "-DPYTHONPATH=\\\"\\\"",
+    "-DVERSION=\\\"%s\\\"" % PYTHON_VERSION,
+    "-DVPATH=\\\".\\\"",
+]
+
+DEEPFREEZE_SRCS = deepfreeze_sources(
+    bootstrap_modules = BOOTSTRAP_MODULES.library,
+    core_copts = CORE_COPTS,
+    frozen_modules = FROZEN_MODULES,
+    getpath_copts = GETPATH_COPTS,
+    linkopts = PLATFORM_LINKOPTS,
+    needs_deepfreeze = PYTHON_NEEDS_DEEPFREEZE,
+    version = PYTHON_VERSION,
+)
+
+SHARED_TEST_EXTENSIONS = shared_test_extensions(PYTHON_VERSION)
+
+cc_library(
+    name = "python_frozen",
+    srcs = [
+        "Modules/getpath.c",
+        "Python/frozen.c",
+    ] + FROZEN_MODULES.keys() + DEEPFREEZE_SRCS,
+    copts = GETPATH_COPTS + CORE_COPTS,
+    includes = ["Python"],
+    deps = [":headers"],
+)
+
+cc_library(
+    name = "python_runtime_core",
+    deps = [
+        ":python_core_no_frozen",
+        STATIC_MODULES.library,
+    ],
+)
+
+NATIVE_TEST_PROGRAMS = native_test_programs(
+    version = PYTHON_VERSION,
+    core = ":python_runtime_core",
+    frozen = ":python_frozen",
+    headers = ":headers",
+    linkopts = PLATFORM_LINKOPTS,
+)
+
+copy_to_directory(
+    name = "runtime_stdlib",
+    srcs = glob(["Lib/**"]) + [":sysconfig_data"] + select({
+        ":darwin_arm64": [],
+        ":darwin_x86_64": [],
+        ":linux_arm64": SHARED_TEST_EXTENSIONS,
+        ":linux_x86_64": SHARED_TEST_EXTENSIONS,
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+    }),
+    out = "runtime/Lib",
+    root_paths = [
+        "Lib",
+        ".",
+    ],
+)
+
+copy_to_directory(
+    name = "runtime_include",
+    srcs = glob(["Include/**"]),
+    out = "runtime/Include",
+    root_paths = ["Include"],
+)
+
+copy_file(
+    name = "runtime_makefile",
+    src = ":sysconfig_makefile",
+    out = "runtime/Makefile",
+)
+
+copy_file(
+    name = "runtime_pyconfig",
+    src = ":pyconfig_h",
+    out = "runtime/pyconfig.h",
+)
+
+copy_file(
+    name = "runtime_setup_local",
+    src = "Modules/Setup.local",
+    out = "runtime/Modules/Setup.local",
+)
+
+copy_file(
+    name = "runtime_pybuilddir",
+    src = "pybuilddir.txt",
+    out = "runtime/pybuilddir.txt",
+)
+
+cc_binary(
+    name = "runtime/python",
+    srcs = ["Programs/python.c"],
+    copts = CORE_COPTS,
+    data = [
+        ":runtime_include",
+        ":runtime_makefile",
+        ":runtime_pybuilddir",
+        ":runtime_pyconfig",
+        ":runtime_setup_local",
+        ":runtime_stdlib",
+    ] + NATIVE_TEST_PROGRAMS,
+    deps = [
+        ":headers",
+        ":python_frozen",
+        ":python_runtime_core",
+    ],
+    linkopts = PYTHON_LINKOPTS,
+)
+
+alias(
+    name = "python",
+    actual = ":runtime/python",
+)
+
+copy_to_directory(
+    name = "runtime_test_doc",
+    srcs = ["Doc/README.rst"],
+    out = "runtime/Doc",
+    root_paths = ["Doc"],
+)
+
+copy_to_directory(
+    name = "runtime_test_objects",
+    srcs = ["Objects/object.c"],
+    out = "runtime/Objects",
+    root_paths = ["Objects"],
+)
+
+copy_to_directory(
+    name = "runtime_test_parser",
+    srcs = [
+        "Parser/Python.asdl",
+        "Parser/asdl.py",
+    ],
+    out = "runtime/Parser",
+    root_paths = ["Parser"],
+)
+
+copy_to_directory(
+    name = "runtime_test_pc",
+    srcs = glob([
+        "PC/pyconfig.h",
+        "PC/pyconfig.h.in",
+    ], allow_empty = True),
+    out = "runtime/PC",
+    root_paths = ["PC"],
+)
+
+[
+    copy_file(
+        name = "runtime_test_" + source.lower().replace(".", "_").replace("/", "_"),
+        src = source,
+        out = "runtime/" + source,
+    )
+    for source in [
+        "Makefile.pre.in",
+        "README.rst",
+        "configure",
+        "configure.ac",
+        "pyconfig.h.in",
+    ]
+]
+
+filegroup(
+    name = "source_build_test_data",
+    srcs = [
+        ":runtime_test_doc",
+        ":runtime_test_makefile_pre_in",
+        ":runtime_test_objects",
+        ":runtime_test_parser",
+        ":runtime_test_pc",
+        ":runtime_test_readme_rst",
+        ":runtime_test_configure",
+        ":runtime_test_configure_ac",
+        ":runtime_test_pyconfig_h_in",
+    ],
+)
+
+upstream_regrtests(
+    name = "upstream_tests",
+    python = ":python",
+    test_data = [":source_build_test_data"],
+    version = PYTHON_VERSION,
+)

@@ -1,0 +1,53 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+package(default_visibility = ["//visibility:public"])
+
+[
+    sh_test(
+        name = "python%s_%s_test" % (
+            version.replace(".", "_"),
+            mode,
+        ),
+        srcs = ["python_smoke_test.sh"],
+        args = [
+            "$(rlocationpath @python%s//:python)" % version.replace(".", "_"),
+            version,
+            mode,
+        ],
+        data = ["@python%s//:python" % version.replace(".", "_")],
+    )
+    for version in [
+        "3.14",
+        "3.13",
+        "3.12",
+        "3.11",
+    ]
+    for mode in [
+        "version",
+        "stdlib",
+        "extension",
+        "subprocess",
+    ]
+]
+
+test_suite(
+    name = "smoke_tests",
+    tests = [
+        ":python3_11_extension_test",
+        ":python3_11_stdlib_test",
+        ":python3_11_subprocess_test",
+        ":python3_11_version_test",
+        ":python3_12_extension_test",
+        ":python3_12_stdlib_test",
+        ":python3_12_subprocess_test",
+        ":python3_12_version_test",
+        ":python3_13_extension_test",
+        ":python3_13_stdlib_test",
+        ":python3_13_subprocess_test",
+        ":python3_13_version_test",
+        ":python3_14_extension_test",
+        ":python3_14_stdlib_test",
+        ":python3_14_subprocess_test",
+        ":python3_14_version_test",
+    ],
+)

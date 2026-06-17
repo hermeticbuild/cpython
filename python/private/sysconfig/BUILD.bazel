@@ -1,0 +1,12 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+
+exports_files(
+    ["sysconfig.bzl"],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "sysconfig_generator",
+    srcs = ["sysconfig_generator.c"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,465 @@
+{
+  "schema_version": 1,
+  "overrides": {
+    "DOUBLE_IS_LITTLE_ENDIAN_IEEE754": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "Linux arm64 and Darwin arm64 use little-endian IEEE 754 doubles."
+    },
+    "ENABLE_IPV6": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "IPv6 is required for both supported targets."
+    },
+    "HAVE_BROKEN_SEM_GETVALUE": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "Darwin sem_getvalue behavior is a fixed CPython platform exception."
+    },
+    "HAVE_BZLIB_H": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The _bz2 module depends on the pinned bzip2 Bazel module."
+    },
+    "HAVE_COMPUTED_GOTOS": {
+      "classification": "COMPILER_PROBE",
+      "justification": "The selected Clang toolchain compiles computed goto syntax; rules_cc_autoconf cannot execute the upstream runtime test."
+    },
+    "HAVE_DEV_PTMX": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "/dev/ptmx is part of both supported runtime platforms and is not a build-sandbox input."
+    },
+    "HAVE_FFI_CLOSURE_ALLOC": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The _ctypes module depends on the pinned hermetic libffi build."
+    },
+    "HAVE_FFI_PREP_CIF_VAR": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The _ctypes module depends on the pinned hermetic libffi build."
+    },
+    "HAVE_FFI_PREP_CLOSURE_LOC": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The _ctypes module depends on the pinned hermetic libffi build."
+    },
+    "HAVE_LZMA_H": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The _lzma module depends on the pinned xz Bazel module."
+    },
+    "HAVE_WORKING_TZSET": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "tzset behavior is fixed for the supported glibc and Darwin runtimes; rules_cc_autoconf cannot execute the upstream runtime test."
+    },
+    "HAVE_ZLIB_COPY": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The zlib module depends on the pinned zlib Bazel module."
+    },
+    "HAVE_ZLIB_H": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The zlib module depends on the pinned zlib Bazel module."
+    },
+    "PACKAGE_BUGREPORT": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "CPython removes PACKAGE_* definitions to avoid collisions in Python.h consumers."
+    },
+    "PACKAGE_NAME": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "CPython removes PACKAGE_* definitions to avoid collisions in Python.h consumers."
+    },
+    "PACKAGE_STRING": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "CPython removes PACKAGE_* definitions to avoid collisions in Python.h consumers."
+    },
+    "PACKAGE_TARNAME": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "CPython removes PACKAGE_* definitions to avoid collisions in Python.h consumers."
+    },
+    "PACKAGE_URL": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "CPython removes PACKAGE_* definitions to avoid collisions in Python.h consumers."
+    },
+    "PACKAGE_VERSION": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "CPython removes PACKAGE_* definitions to avoid collisions in Python.h consumers."
+    },
+    "PTHREAD_SYSTEM_SCHED_SUPPORTED": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "PTHREAD_SCOPE_SYSTEM is supported by both selected pthread implementations; rules_cc_autoconf cannot execute the upstream runtime test."
+    },
+    "PYLONG_BITS_IN_DIGIT": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "pyport.h supplies CPython's default value when no configure option is selected."
+    },
+    "PY_COERCE_C_LOCALE": {
+      "classification": "FIXED_BUILD_POLICY",
+      "justification": "The Bazel module uses CPython's default C-locale coercion policy."
+    },
+    "PY_SQLITE_ENABLE_LOAD_EXTENSION": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "CPython disables SQLite extension loading unless the configure option explicitly enables it."
+    },
+    "PY_SSL_DEFAULT_CIPHERS": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The _ssl module uses CPython's default cipher policy with the pinned OpenSSL Bazel module."
+    },
+    "PY_SQLITE_HAVE_SERIALIZE": {
+      "classification": "DEPENDENCY_CONTRACT",
+      "justification": "The _sqlite3 module uses serialization provided by the pinned SQLite Bazel module."
+    },
+    "PY_SUPPORT_TIER": {
+      "classification": "VERSION_SPECIFIC_TARGET_FACT",
+      "justification": "Linux arm64 is tier 2; Darwin arm64 is tier 2 in CPython 3.12 and tier 1 in CPython 3.13."
+    },
+    "Py_HASH_ALGORITHM": {
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "justification": "pyhash.h supplies CPython's default value when no configure option is selected."
+    },
+    "THREAD_STACK_SIZE": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "Darwin arm64 uses CPython's 16 MiB main-thread stack contract and matching linker option."
+    },
+    "USE_COMPUTED_GOTOS": {
+      "classification": "HEADER_DERIVED",
+      "justification": "ceval_macros.h derives USE_COMPUTED_GOTOS from HAVE_COMPUTED_GOTOS."
+    },
+    "WITH_DECIMAL_CONTEXTVAR": {
+      "classification": "FIXED_BUILD_POLICY",
+      "justification": "The Bazel module uses CPython's default decimal context-variable policy."
+    },
+    "WITH_DOC_STRINGS": {
+      "classification": "FIXED_BUILD_POLICY",
+      "justification": "The Bazel module uses CPython's default documentation-string policy."
+    },
+    "WITH_DYLD": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "Darwin arm64 uses dyld dynamic loading."
+    },
+    "WITH_FREELISTS": {
+      "classification": "FIXED_BUILD_POLICY",
+      "justification": "The Bazel module uses CPython's default freelist policy."
+    },
+    "WITH_MIMALLOC": {
+      "classification": "VERSION_SPECIFIC_BUILD_POLICY",
+      "justification": "CPython 3.13 enables mimalloc when the selected compiler provides C11 atomics; CPython 3.12 has no mimalloc option."
+    },
+    "WITH_PYMALLOC": {
+      "classification": "FIXED_BUILD_POLICY",
+      "justification": "The Bazel module uses CPython's default pymalloc policy."
+    },
+    "_DARWIN_C_SOURCE": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "CPython defines _DARWIN_C_SOURCE for all supported POSIX builds."
+    },
+    "_FILE_OFFSET_BITS": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "Both supported targets use 64-bit off_t."
+    },
+    "_GNU_SOURCE": {
+      "classification": "PLATFORM_SPECIFIC_TARGET_FACT",
+      "justification": "Linux arm64 defines _GNU_SOURCE and Darwin arm64 leaves it undefined."
+    },
+    "_LARGEFILE_SOURCE": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "CPython enables large-file declarations on both supported targets."
+    },
+    "_NETBSD_SOURCE": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "CPython defines _NETBSD_SOURCE before all capability checks."
+    },
+    "_POSIX_C_SOURCE": {
+      "classification": "PLATFORM_SPECIFIC_TARGET_FACT",
+      "justification": "Linux arm64 uses 200809L and Darwin arm64 leaves _POSIX_C_SOURCE undefined."
+    },
+    "_REENTRANT": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "Both supported targets use the pthread build."
+    },
+    "_XOPEN_SOURCE": {
+      "classification": "PLATFORM_SPECIFIC_TARGET_FACT",
+      "justification": "Linux arm64 uses 700 and Darwin arm64 leaves _XOPEN_SOURCE undefined."
+    },
+    "_XOPEN_SOURCE_EXTENDED": {
+      "classification": "PLATFORM_SPECIFIC_TARGET_FACT",
+      "justification": "Linux arm64 defines _XOPEN_SOURCE_EXTENDED and Darwin arm64 leaves it undefined."
+    },
+    "__BSD_VISIBLE": {
+      "classification": "FIXED_TARGET_FACT",
+      "justification": "CPython defines __BSD_VISIBLE before all capability checks."
+    }
+  },
+  "configure_decisions": [
+    {
+      "name": "required_c99_math_functions",
+      "classification": "PROBE",
+      "implementation": "_required_math_checks() links all eight functions with -lm.",
+      "justification": "CPython treats acosh, asinh, atanh, erf, erfc, expm1, log1p, and log2 as required."
+    },
+    {
+      "name": "dynamic_loading",
+      "classification": "PROBE",
+      "implementation": "_dynamic_loading_checks() checks dlopen with the platform link options.",
+      "justification": "HAVE_DYNAMIC_LOADING follows the actual dlopen result."
+    },
+    {
+      "name": "posix_shared_memory",
+      "classification": "PROBE",
+      "implementation": "_posix_shmem_checks() links shm_open and shm_unlink with the platform link options.",
+      "justification": "Linux glibc 2.28 requires -lrt; Darwin provides the functions in libSystem."
+    },
+    {
+      "name": "pty_functions",
+      "classification": "PROBE",
+      "implementation": "_pty_checks() links openpty, forkpty, and login_tty with the platform headers and libraries.",
+      "justification": "Linux uses libutil and Darwin uses libSystem."
+    },
+    {
+      "name": "cpython_3_13_mimalloc",
+      "classification": "VERSION_SPECIFIC_BUILD_POLICY",
+      "implementation": "WITH_MIMALLOC follows HAVE_STD_ATOMIC, and Objects/mimalloc sources and headers are declared inputs.",
+      "justification": "This matches the CPython 3.13 default; CPython 3.12 has no mimalloc option."
+    },
+    {
+      "name": "darwin_main_thread_stack",
+      "classification": "FIXED_TARGET_FACT",
+      "implementation": "THREAD_STACK_SIZE and -Wl,-stack_size,1000000 are set together in cpython.BUILD.bazel.",
+      "justification": "CPython requires a 16 MiB main-thread stack on Darwin arm64."
+    },
+    {
+      "name": "darwin_corefoundation_link",
+      "classification": "FIXED_TARGET_FACT",
+      "implementation": "POSIX_LINKOPTS and LINKFORSHARED include -framework CoreFoundation.",
+      "justification": "This matches CPython's Darwin executable link contract."
+    },
+    {
+      "name": "linux_system_libraries",
+      "classification": "FIXED_TARGET_FACT",
+      "implementation": "POSIX_LINKOPTS includes -ldl, -lm, -lpthread, -lrt, and -lutil.",
+      "justification": "The selected glibc 2.28 sysroot requires these libraries for the probed interfaces."
+    },
+    {
+      "name": "zlib_dependency",
+      "classification": "DEPENDENCY_CONTRACT",
+      "implementation": "The zlib module depends on the pinned zlib Bazel module.",
+      "justification": "Header and function results are dependency contracts rather than host discovery."
+    },
+    {
+      "name": "bzip2_dependency",
+      "classification": "DEPENDENCY_CONTRACT",
+      "implementation": "The _bz2 module depends on the pinned bzip2 Bazel module.",
+      "justification": "Header and function results are dependency contracts rather than host discovery."
+    },
+    {
+      "name": "xz_dependency",
+      "classification": "DEPENDENCY_CONTRACT",
+      "implementation": "The _lzma module depends on the pinned xz Bazel module.",
+      "justification": "Header and function results are dependency contracts rather than host discovery."
+    },
+    {
+      "name": "libffi_dependency",
+      "classification": "DEPENDENCY_CONTRACT",
+      "implementation": "The _ctypes module depends on the pinned hermetic libffi build.",
+      "justification": "ffi_prep_cif_var, ffi_prep_closure_loc, and ffi_closure_alloc follow that dependency."
+    },
+    {
+      "name": "openssl_dependency",
+      "classification": "DEPENDENCY_CONTRACT",
+      "implementation": "The _ssl and _hashlib modules depend on the pinned OpenSSL Bazel module.",
+      "justification": "OpenSSL configuration does not inspect host libraries."
+    },
+    {
+      "name": "sqlite_dependency",
+      "classification": "DEPENDENCY_CONTRACT",
+      "implementation": "The _sqlite3 module depends on the pinned SQLite Bazel module.",
+      "justification": "PY_SQLITE_HAVE_SERIALIZE follows the pinned SQLite build; extension loading remains disabled."
+    },
+    {
+      "name": "unsupported_optional_dependencies",
+      "classification": "UNSUPPORTED_DEPENDENCY",
+      "implementation": "readline, curses, panel, gdbm, ndbm, uuid, Tcl/Tk, editline, crypt, and external libintl symbols have explicit undefined dispositions.",
+      "justification": "The Bazel module does not declare those optional dependency graphs or modules."
+    },
+    {
+      "name": "unsupported_build_modes",
+      "classification": "UNSUPPORTED_BUILD_MODE",
+      "implementation": "debug, shared-libpython, free-threading, statistics, trace-refs, DTrace, Valgrind, framework, universal, and perf-trampoline symbols have explicit undefined dispositions.",
+      "justification": "The version tag selects an ordinary static CPython build."
+    },
+    {
+      "name": "hash_algorithm_default",
+      "classification": "HEADER_DERIVED",
+      "implementation": "Py_HASH_ALGORITHM remains undefined in pyconfig.h.",
+      "justification": "pyhash.h selects CPython's default when no configure option is supplied."
+    },
+    {
+      "name": "pylong_digit_default",
+      "classification": "HEADER_DERIVED",
+      "implementation": "PYLONG_BITS_IN_DIGIT remains undefined in pyconfig.h.",
+      "justification": "pyport.h selects CPython's default when no configure option is supplied."
+    },
+    {
+      "name": "sysconfig_generation",
+      "classification": "GENERATED_METADATA",
+      "implementation": "cpython_sysconfig reads generated pyconfig.h and an explicit Bazel build-variable manifest.",
+      "justification": "No Makefile execution or configure output is used."
+    },
+    {
+      "name": "package_definitions",
+      "classification": "INTENTIONALLY_UNDEFINED",
+      "implementation": "checks.AC_FAIL emits explicit undefined results for all six PACKAGE_* symbols.",
+      "justification": "This overrides rules_cc_autoconf builtins and matches CPython's collision-avoidance rule."
+    }
+  ],
+  "reviewed_undefined": {
+    "EXPECTED_FALSE": [
+      "DOUBLE_IS_ARM_MIXED_ENDIAN_IEEE754",
+      "DOUBLE_IS_BIG_ENDIAN_IEEE754",
+      "GETPGRP_HAVE_ARG",
+      "HAVE_ALIGNED_REQUIRED",
+      "HAVE_BROKEN_MBSTOWCS",
+      "HAVE_BROKEN_NICE",
+      "HAVE_BROKEN_PIPE_BUF",
+      "HAVE_BROKEN_POLL",
+      "HAVE_BROKEN_POSIX_SEMAPHORES",
+      "HAVE_BROKEN_PTHREAD_SIGMASK",
+      "HAVE_BROKEN_UNSETENV",
+      "HAVE_DEV_PTC",
+      "HAVE_FSEEK64",
+      "HAVE_FTELL64",
+      "HAVE_GCC_ASM_FOR_MC68881",
+      "HAVE_GCC_ASM_FOR_X64",
+      "HAVE_GCC_ASM_FOR_X87",
+      "HAVE_GETHOSTBYNAME_R_3_ARG",
+      "HAVE_GETHOSTBYNAME_R_5_ARG",
+      "HAVE_GLIBC_MEMMOVE_BUG",
+      "HAVE_IPA_PURE_CONST_BUG",
+      "HAVE_LARGEFILE_SUPPORT",
+      "HAVE_LIBIEEE",
+      "HAVE_LIBRESOLV",
+      "HAVE_LIBSENDFILE",
+      "HAVE_LIBSQLITE3",
+      "HAVE_NON_UNICODE_WCHAR_T_REPRESENTATION",
+      "HAVE_PTHREAD_DESTRUCTOR",
+      "HAVE_PTHREAD_STUBS",
+      "HAVE_USABLE_WCHAR_T",
+      "POSIX_SEMAPHORES_NOT_ENABLED",
+      "PY_SSL_DEFAULT_CIPHER_STRING",
+      "SETPGRP_HAVE_ARG",
+      "SIGNED_RIGHT_SHIFT_ZERO_FILLS",
+      "TIMEMODULE_LIB",
+      "TM_IN_SYS_TIME",
+      "WORDS_BIGENDIAN",
+      "X87_DOUBLE_ROUNDING",
+      "__STDC_WANT_IEC_60559_ATTRIBS_EXT__",
+      "__STDC_WANT_IEC_60559_BFP_EXT__",
+      "__STDC_WANT_IEC_60559_DFP_EXT__",
+      "__STDC_WANT_IEC_60559_FUNCS_EXT__",
+      "__STDC_WANT_IEC_60559_TYPES_EXT__",
+      "__STDC_WANT_LIB_EXT2__",
+      "__STDC_WANT_MATH_SPEC_FUNCS__",
+      "clock_t",
+      "const",
+      "gid_t",
+      "mode_t",
+      "off_t",
+      "pid_t",
+      "signed",
+      "size_t",
+      "socklen_t",
+      "uid_t"
+    ],
+    "HEADER_DERIVED": [],
+    "UNSUPPORTED_BUILD_MODE": [
+      "AC_APPLE_UNIVERSAL_BUILD",
+      "ALT_SOABI",
+      "PY_HAVE_PERF_TRAMPOLINE",
+      "Py_DEBUG",
+      "Py_ENABLE_SHARED",
+      "Py_GIL_DISABLED",
+      "Py_STATS",
+      "Py_TRACE_REFS",
+      "WITH_DTRACE",
+      "WITH_NEXT_FRAMEWORK",
+      "WITH_VALGRIND"
+    ],
+    "UNSUPPORTED_DEPENDENCY": [
+      "HAVE_CRYPT_R",
+      "HAVE_CURSES_FILTER",
+      "HAVE_CURSES_H",
+      "HAVE_CURSES_HAS_KEY",
+      "HAVE_CURSES_IMMEDOK",
+      "HAVE_CURSES_IS_PAD",
+      "HAVE_CURSES_IS_TERM_RESIZED",
+      "HAVE_CURSES_RESIZETERM",
+      "HAVE_CURSES_RESIZE_TERM",
+      "HAVE_CURSES_SYNCOK",
+      "HAVE_CURSES_TYPEAHEAD",
+      "HAVE_CURSES_USE_ENV",
+      "HAVE_CURSES_WCHGAT",
+      "HAVE_DB_H",
+      "HAVE_EDITLINE_READLINE_H",
+      "HAVE_GDBM_DASH_NDBM_H",
+      "HAVE_GDBM_H",
+      "HAVE_GDBM_NDBM_H",
+      "HAVE_LIBB2",
+      "HAVE_LIBDB",
+      "HAVE_NCURSES",
+      "HAVE_NCURSESW",
+      "HAVE_NCURSESW_CURSES_H",
+      "HAVE_NCURSESW_NCURSES_H",
+      "HAVE_NCURSESW_PANEL_H",
+      "HAVE_NCURSES_CURSES_H",
+      "HAVE_NCURSES_H",
+      "HAVE_NCURSES_NCURSES_H",
+      "HAVE_NCURSES_PANEL_H",
+      "HAVE_NDBM_H",
+      "HAVE_PANEL",
+      "HAVE_PANELW",
+      "HAVE_PANEL_H",
+      "HAVE_READLINE_READLINE_H",
+      "HAVE_RL_APPEND_HISTORY",
+      "HAVE_RL_CATCH_SIGNAL",
+      "HAVE_RL_COMPDISP_FUNC_T",
+      "HAVE_RL_COMPLETION_APPEND_CHARACTER",
+      "HAVE_RL_COMPLETION_DISPLAY_MATCHES_HOOK",
+      "HAVE_RL_COMPLETION_MATCHES",
+      "HAVE_RL_COMPLETION_SUPPRESS_APPEND",
+      "HAVE_RL_PRE_INPUT_HOOK",
+      "HAVE_RL_RESIZE_TERMINAL",
+      "HAVE_RPC_RPC_H",
+      "HAVE_TERM_H",
+      "HAVE_UUID_CREATE",
+      "HAVE_UUID_ENC_BE",
+      "HAVE_UUID_GENERATE_TIME_SAFE",
+      "HAVE_UUID_GENERATE_TIME_SAFE_STABLE_MAC",
+      "HAVE_UUID_H",
+      "HAVE_UUID_UUID_H",
+      "MVWDELCH_IS_EXPRESSION",
+      "Py_RL_STARTUP_HOOK_TAKES_ARGS",
+      "WINDOW_HAS_FLAGS",
+      "WITH_EDITLINE",
+      "WITH_LIBINTL"
+    ],
+    "UNSUPPORTED_PLATFORM": [
+      "AIX_BUILDDATE",
+      "AIX_GENUINE_CPLUSPLUS",
+      "ANDROID_API_LEVEL",
+      "HAVE_LIBDLD",
+      "HAVE_MINIX_CONFIG_H",
+      "HAVE_NDIR_H",
+      "HAVE_SYS_DIR_H",
+      "HAVE_SYS_NDIR_H",
+      "Py_SUNOS_VERSION",
+      "_ALL_SOURCE",
+      "_BSD_SOURCE",
+      "_HPUX_ALT_XOPEN_SOCKET_API",
+      "_INCLUDE__STDC_A1_SOURCE",
+      "_LARGE_FILES",
+      "_MINIX",
+      "_OPENBSD_SOURCE",
+      "_POSIX_1_SOURCE",
+      "_POSIX_PTHREAD_SEMANTICS",
+      "_POSIX_SOURCE",
+      "_POSIX_THREADS",
+      "_TANDEM_SOURCE",
+      "_WASI_EMULATED_GETPID",
+      "_WASI_EMULATED_PROCESS_CLOCKS",
+      "_WASI_EMULATED_SIGNAL",
+      "__EXTENSIONS__"
+    ]
+  }
+}
