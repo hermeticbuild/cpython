@@ -170,7 +170,10 @@ def bundled_libraries(
         ],
         deps = [python_headers],
         defines = select({
-            "@platforms//os:windows": ["XML_STATIC=1"],
+            "@platforms//os:windows": [
+                "Py_BUILD_CORE=1",
+                "XML_STATIC=1",
+            ],
             "//conditions:default": [],
         }),
         includes = ["Modules/expat"],

@@ -14,7 +14,7 @@ exports_files([
     "upstream_test.sh",
     "upstream_tests.bzl",
     "versions.bzl",
-    "windows_static_support.c",
+    "windows_bootstrap_support.c",
 ])
 
 sh_binary(

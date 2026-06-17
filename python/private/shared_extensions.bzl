@@ -1,4 +1,4 @@
-"""Shared CPython extensions required by the POSIX test runtimes."""
+"""Shared CPython extensions required by the test runtimes."""
 
 load("@cpython//python/private:modules.bzl", "testcapi_sources")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
@@ -66,6 +66,11 @@ _POSIX_COMPATIBILITY = select({
     "//conditions:default": ["@platforms//:incompatible"],
 })
 
+_WINDOWS_COMPATIBILITY = select({
+    "@platforms//os:windows": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
 def _shared_extension(name, srcs, headers, core_module, target_compatible_with):
     # The shared extension retains undefined Python API symbols. The Python
     # interpreter resolves those symbols when it loads the extension.
@@ -87,8 +92,61 @@ def _shared_extension(name, srcs, headers, core_module, target_compatible_with):
         visibility = ["//visibility:public"],
     )
 
-def shared_extensions(version, soabi, headers = ":headers"):
-    """Defines POSIX shared extensions and returns their runtime labels."""
+def _windows_extension(
+        name,
+        srcs,
+        headers,
+        core_module,
+        python_import,
+        python_import_library,
+        stable_abi,
+        stable_import,
+        version_abi):
+    deps = [headers]
+    linkopts = ["/NODEFAULTLIB:" + python_import_library]
+    if version_abi:
+        deps.append(python_import)
+    if stable_abi:
+        deps.append(stable_import)
+        linkopts.append("/NODEFAULTLIB:python3.lib")
+
+    cc_binary(
+        name = name,
+        srcs = srcs,
+        copts = [
+            "/std:c11",
+            "/O2",
+            "-fwrapv",
+        ],
+        deps = deps,
+        features = ["no_windows_export_all_symbols"],
+        linkopts = linkopts,
+        linkshared = True,
+        local_defines = ["Py_BUILD_CORE_MODULE=1"] if core_module else [],
+        target_compatible_with = _WINDOWS_COMPATIBILITY,
+        visibility = ["//visibility:public"],
+    )
+
+def shared_extensions(
+        version,
+        soabi,
+        headers = ":headers",
+        python_import = None,
+        python_import_library = None,
+        stable_import = None):
+    """Defines shared extensions and returns their runtime labels.
+
+    Args:
+      version: The CPython minor version.
+      soabi: The POSIX extension-module ABI tag.
+      headers: The CPython header target.
+      python_import: The versioned Windows CPython import-library target.
+      python_import_library: The versioned Windows import-library filename.
+      stable_import: The Windows stable-ABI import-library target.
+
+    Returns:
+      Platform-specific lists of shared-extension labels.
+    """
     if version not in _VERSION_EXTENSIONS:
         fail("shared_extensions does not support CPython %s" % version)
 
@@ -96,6 +154,7 @@ def shared_extensions(version, soabi, headers = ":headers"):
     extensions.update(_VERSION_EXTENSIONS[version])
 
     common_outputs = []
+    windows_outputs = []
     for module_name in sorted(extensions):
         extension = extensions[module_name]
         output = module_name + ".so"
@@ -107,6 +166,22 @@ def shared_extensions(version, soabi, headers = ":headers"):
             target_compatible_with = _POSIX_COMPATIBILITY,
         )
         common_outputs.append(":" + output)
+
+        windows_output = module_name + ".pyd"
+        stable_abi = module_name in ["xxlimited", "xxlimited_35"]
+        version_abi = not stable_abi
+        _windows_extension(
+            name = windows_output,
+            srcs = extension["srcs"],
+            headers = headers,
+            core_module = extension["core_module"],
+            python_import = python_import,
+            python_import_library = python_import_library,
+            stable_abi = stable_abi,
+            stable_import = stable_import,
+            version_abi = version_abi,
+        )
+        windows_outputs.append(":" + windows_output)
 
     darwin_outputs = common_outputs
     linux_arm64_outputs = common_outputs
@@ -146,9 +221,38 @@ def shared_extensions(version, soabi, headers = ":headers"):
         linux_arm64_outputs = common_outputs + [":" + asyncio_linux_arm64]
         linux_x86_64_outputs = common_outputs + [":" + asyncio_linux_x86_64]
 
+        asyncio_windows = "_asyncio.pyd"
+        _windows_extension(
+            name = asyncio_windows,
+            srcs = ["Modules/_asynciomodule.c"],
+            headers = headers,
+            core_module = True,
+            python_import = python_import,
+            python_import_library = python_import_library,
+            stable_abi = False,
+            stable_import = stable_import,
+            version_abi = True,
+        )
+        windows_outputs.append(":" + asyncio_windows)
+
+    testconsole = "_testconsole.pyd"
+    _windows_extension(
+        name = testconsole,
+        srcs = ["PC/_testconsole.c"],
+        headers = headers,
+        core_module = False,
+        python_import = python_import,
+        python_import_library = python_import_library,
+        stable_abi = False,
+        stable_import = stable_import,
+        version_abi = True,
+    )
+    windows_outputs.append(":" + testconsole)
+
     return struct(
         darwin_arm64 = darwin_outputs,
         darwin_x86_64 = darwin_outputs,
         linux_arm64 = linux_arm64_outputs,
         linux_x86_64 = linux_x86_64_outputs,
+        windows = windows_outputs,
     )

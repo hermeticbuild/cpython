@@ -17,6 +17,11 @@ def _cpython_sysconfig_impl(ctx):
         "platbase",
         "projectbase",
     ]
+    integer_build_vars = {name: True for name in ctx.attr.integer_build_vars}
+    for name in integer_build_vars:
+        if name not in ctx.attr.build_vars:
+            fail("integer_build_vars contains unknown build variable {}".format(name))
+
     for name in sorted(ctx.attr.build_vars.keys()):
         if name.startswith("HAVE_") or name.startswith("WITH_"):
             fail("{} must come from pyconfig.h, not build_vars".format(name))
@@ -32,7 +37,11 @@ def _cpython_sysconfig_impl(ctx):
     ctx.actions.write(
         build_vars,
         "".join([
-            "S\t{}\t{}\n".format(name, ctx.attr.build_vars[name])
+            "{}\t{}\t{}\n".format(
+                "I" if name in integer_build_vars else "S",
+                name,
+                ctx.attr.build_vars[name],
+            )
             for name in sorted(ctx.attr.build_vars.keys())
         ]),
     )
@@ -71,6 +80,7 @@ cpython_sysconfig = rule(
     implementation = _cpython_sysconfig_impl,
     attrs = {
         "build_vars": attr.string_dict(mandatory = True),
+        "integer_build_vars": attr.string_list(),
         "makefile_template": attr.label(
             allow_single_file = True,
             mandatory = True,

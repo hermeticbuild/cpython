@@ -29,7 +29,7 @@ _TEST_PROGRAMS = {
     },
 }
 
-def native_test_programs(version, core, headers, frozen, linkopts = []):
+def native_test_programs(version, deps, linkopts = [], local_defines = []):
     """Defines CPython native test programs and returns their target labels.
 
     Programs/test_frozenmain.h is the generated frozen-main helper checked into
@@ -38,11 +38,9 @@ def native_test_programs(version, core, headers, frozen, linkopts = []):
 
     Args:
       version: Supported CPython minor version.
-      core: cc_library target containing the CPython core objects and required
-        transitive linker inputs.
-      headers: cc_library target containing CPython public and internal headers.
-      frozen: cc_library target containing CPython frozen modules and getpath.
+      deps: C++ dependencies required by each native test program.
       linkopts: Platform link options required by the CPython core.
+      local_defines: Preprocessor definitions for each native test program.
 
     Returns:
       Labels for the native test-program targets, suitable for runtime data.
@@ -50,7 +48,8 @@ def native_test_programs(version, core, headers, frozen, linkopts = []):
     if version not in _TEST_PROGRAMS:
         fail("native_test_programs does not support CPython %s" % version)
 
-    outputs = []
+    posix_outputs = []
+    windows_outputs = []
     for output in sorted(_TEST_PROGRAMS[version]):
         cc_binary(
             name = output,
@@ -59,18 +58,35 @@ def native_test_programs(version, core, headers, frozen, linkopts = []):
                 "-std=c11",
                 "-fwrapv",
             ],
-            deps = [
-                core,
-                headers,
-                frozen,
-            ],
-            local_defines = [
-                "Py_BUILD_CORE=1",
-                "Py_BUILD_CORE_MODULE=1",
-            ],
+            deps = deps,
+            local_defines = local_defines,
             linkopts = linkopts,
+            target_compatible_with = select({
+                "@platforms//os:linux": [],
+                "@platforms//os:macos": [],
+                "//conditions:default": ["@platforms//:incompatible"],
+            }),
             visibility = ["//visibility:public"],
         )
-        outputs.append(":" + output)
+        posix_outputs.append(":" + output)
 
-    return outputs
+        windows_output = "runtime/" + output.split("/")[-1]
+        cc_binary(
+            name = windows_output,
+            srcs = _TEST_PROGRAMS[version][output],
+            copts = [
+                "-std=c11",
+                "-fwrapv",
+            ],
+            deps = deps,
+            local_defines = local_defines,
+            linkopts = linkopts,
+            target_compatible_with = ["@platforms//os:windows"],
+            visibility = ["//visibility:public"],
+        )
+        windows_outputs.append(":" + windows_output)
+
+    return select({
+        "@platforms//os:windows": windows_outputs,
+        "//conditions:default": posix_outputs,
+    })

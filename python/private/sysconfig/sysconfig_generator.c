@@ -291,9 +291,10 @@ static void parse_build_vars(Variables *variables, const char *path) {
       fail("invalid build variable manifest line", line);
     }
     line[length - 1] = '\0';
-    if (line[0] != 'S' || line[1] != '\t') {
+    if ((line[0] != 'S' && line[0] != 'I') || line[1] != '\t') {
       fail("invalid build variable manifest type", line);
     }
+    ValueKind kind = line[0] == 'I' ? VALUE_INTEGER : VALUE_STRING;
     char *name = line + 2;
     char *separator = strchr(name, '\t');
     if (separator == NULL) {
@@ -310,8 +311,16 @@ static void parse_build_vars(Variables *variables, const char *path) {
     if (find_variable(variables, name) != NULL) {
       fail("build variable duplicates pyconfig.h variable", name);
     }
+    char *normalized_value = duplicate_range(value, strlen(value));
+    if (kind == VALUE_INTEGER) {
+      free(normalized_value);
+      normalized_value = normalized_integer(value);
+      if (normalized_value == NULL) {
+        fail("invalid integer build variable", value);
+      }
+    }
     set_config_variable(variables, duplicate_range(name, strlen(name)),
-                        duplicate_range(value, strlen(value)), VALUE_STRING);
+                        normalized_value, kind);
     variables->items[variables->length - 1].from_build_vars = true;
   }
   if (ferror(input)) {

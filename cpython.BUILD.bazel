@@ -11,7 +11,9 @@ load("@cpython//python/private:test_programs.bzl", "native_test_programs")
 load("@cpython//python/private:upstream_tests.bzl", "upstream_regrtests")
 load("@cpython//python/private/sysconfig:sysconfig.bzl", "cpython_sysconfig", "merge_sysconfig_build_vars")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("//bazel:release.bzl", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_SOABI", "PYTHON_VERSION")
 
@@ -91,10 +93,14 @@ WINDOWS_LINK_LIBRARIES = [
     "ws2_32.lib",
 ] + (["Rpcrt4.lib"] if PYTHON_VERSION != "3.11" else [])
 
-WINDOWS_STATIC_DEFINES = [
+WINDOWS_BOOTSTRAP_DEFINES = [
     "MS_NO_COREDLL=1",
     "Py_NO_ENABLE_SHARED=1",
 ]
+
+PYTHON_DLL_BASENAME = "python{}".format(PYTHON_VERSION.replace(".", ""))
+PYTHON_DLL = PYTHON_DLL_BASENAME + ".dll"
+PYTHON_IMPORT_LIBRARY = PYTHON_DLL_BASENAME + ".lib"
 
 PLATFORM_LINKOPTS = select({
     ":darwin_arm64": [
@@ -268,6 +274,9 @@ cpython_sysconfig(
             "EXT_SUFFIX": ".pyd",
             "LDSHARED": "lld-link /DLL",
             "LIBM": "",
+            "LDLIBRARY": PYTHON_DLL,
+            "LIBDIR": "{}/libs".format(SYSCONFIG_PREFIX),
+            "LIBRARY": PYTHON_IMPORT_LIBRARY,
             "LIBPL": "{}/config-{}-arm64-windows".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
             "LIBS": " ".join(WINDOWS_LINK_LIBRARIES),
             "MACHDEP": "win32",
@@ -275,6 +284,7 @@ cpython_sysconfig(
             "MULTIARCH_CPPFLAGS": "",
             "OBJEXT": ".obj",
             "PY_CFLAGS": "/std:c11 /O2 /DNDEBUG",
+            "Py_ENABLE_SHARED": "1",
             "SHLIB_SUFFIX": ".pyd",
             "SOABI": "",
         }),
@@ -289,6 +299,9 @@ cpython_sysconfig(
             "EXT_SUFFIX": ".pyd",
             "LDSHARED": "lld-link /DLL",
             "LIBM": "",
+            "LDLIBRARY": PYTHON_DLL,
+            "LIBDIR": "{}/libs".format(SYSCONFIG_PREFIX),
+            "LIBRARY": PYTHON_IMPORT_LIBRARY,
             "LIBPL": "{}/config-{}-amd64-windows".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
             "LIBS": " ".join(WINDOWS_LINK_LIBRARIES),
             "MACHDEP": "win32",
@@ -296,9 +309,15 @@ cpython_sysconfig(
             "MULTIARCH_CPPFLAGS": "",
             "OBJEXT": ".obj",
             "PY_CFLAGS": "/std:c11 /O2 /DNDEBUG",
+            "Py_ENABLE_SHARED": "1",
             "SHLIB_SUFFIX": ".pyd",
             "SOABI": "",
         }),
+    }),
+    integer_build_vars = select({
+        ":windows_arm64": ["Py_ENABLE_SHARED"],
+        ":windows_x86_64": ["Py_ENABLE_SHARED"],
+        "//conditions:default": [],
     }),
     makefile_template = "Makefile.pre.in",
     multiarch = select({
@@ -352,9 +371,41 @@ cc_library(
         ":windows_x86_64": ["PC"],
         "//conditions:default": [],
     }),
+    textual_hdrs = glob(
+        [
+            "Modules/**/*.inc",
+            "Modules/_sha3/*.c",
+            "Modules/_ssl/*.c",
+            "Objects/*.inc",
+            "Objects/mimalloc/**/*.c",
+        ],
+        allow_empty = True,
+    ),
+)
+
+cc_library(
+    name = "bootstrap_headers",
+    hdrs = glob([
+        "Include/**/*.h",
+        "Modules/**/*.h",
+        "Objects/**/*.h",
+        "Parser/**/*.h",
+        "PC/**/*.h",
+        "Python/**/*.h",
+    ]) + [":pyconfig_h"],
+    includes = [
+        ".",
+        "Include",
+        "Include/internal",
+        "Modules",
+    ] + (["Include/internal/mimalloc"] if PYTHON_VERSION in ["3.13", "3.14"] else []) + select({
+        ":windows_arm64": ["PC"],
+        ":windows_x86_64": ["PC"],
+        "//conditions:default": [],
+    }),
     defines = select({
-        ":windows_arm64": WINDOWS_STATIC_DEFINES,
-        ":windows_x86_64": WINDOWS_STATIC_DEFINES,
+        ":windows_arm64": WINDOWS_BOOTSTRAP_DEFINES,
+        ":windows_x86_64": WINDOWS_BOOTSTRAP_DEFINES,
         "//conditions:default": [],
     }),
     textual_hdrs = glob(
@@ -376,11 +427,25 @@ bundled_libraries(
 cc_library(
     name = "pyconfig_contract",
     srcs = ["@cpython//python/private:pyconfig_contract.c"],
-    copts = C_STANDARD_COPTS,
+    copts = C_STANDARD_COPTS + select({
+        ":windows_arm64": ["-DPy_BUILD_CORE=1"],
+        ":windows_x86_64": ["-DPy_BUILD_CORE=1"],
+        "//conditions:default": [],
+    }),
     deps = [":headers"],
 )
 
-CORE_SOURCES = glob([
+cc_library(
+    name = "bootstrap_pyconfig_contract",
+    srcs = ["@cpython//python/private:pyconfig_contract.c"],
+    copts = C_STANDARD_COPTS + [
+        "-DCPYTHON_BAZEL_STATIC_BOOTSTRAP=1",
+        "-DPy_BUILD_CORE=1",
+    ],
+    deps = [":bootstrap_headers"],
+)
+
+CORE_BASE_SOURCES = glob([
     "Objects/*.c",
     "Parser/**/*.c",
     "Python/*.c",
@@ -400,7 +465,42 @@ CORE_SOURCES = glob([
     "Python/frozen.c",
     "Python/frozenmain.c",
     "Python/optimizer_bytecodes.c",
-]) + select({
+]) + [
+    "Modules/gcmodule.c",
+    "Modules/getbuildinfo.c",
+    "Modules/main.c",
+]
+
+CORE_SOURCES = CORE_BASE_SOURCES + select({
+    ":darwin_arm64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":darwin_x86_64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":linux_arm64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":linux_x86_64": [
+        "Python/dynload_shlib.c",
+        "Python/frozenmain.c",
+    ],
+    ":windows_arm64": [
+        "PC/invalid_parameter_handler.c",
+        "PC/dl_nt.c",
+        "Python/dynload_win.c",
+    ],
+    ":windows_x86_64": [
+        "PC/invalid_parameter_handler.c",
+        "PC/dl_nt.c",
+        "Python/dynload_win.c",
+    ],
+})
+
+BOOTSTRAP_CORE_SOURCES = CORE_BASE_SOURCES + select({
     ":darwin_arm64": [
         "Python/dynload_shlib.c",
         "Python/frozenmain.c",
@@ -420,18 +520,14 @@ CORE_SOURCES = glob([
     ":windows_arm64": [
         "PC/invalid_parameter_handler.c",
         "Python/dynload_win.c",
-        "@cpython//python/private:windows_static_support.c",
+        "@cpython//python/private:windows_bootstrap_support.c",
     ],
     ":windows_x86_64": [
         "PC/invalid_parameter_handler.c",
         "Python/dynload_win.c",
-        "@cpython//python/private:windows_static_support.c",
+        "@cpython//python/private:windows_bootstrap_support.c",
     ],
-}) + [
-    "Modules/gcmodule.c",
-    "Modules/getbuildinfo.c",
-    "Modules/main.c",
-]
+})
 
 COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
     "-fwrapv",
@@ -481,19 +577,38 @@ CORE_COPTS = ["-DPy_BUILD_CORE=1"] + COMMON_COPTS + select({
 
 CEVAL_COPTS = ["-finline-max-stacksize=512"] if PYTHON_VERSION == "3.14" else []
 
+RUNTIME_MODULE_COPTS = COMMON_COPTS + select({
+    ":windows_arm64": ["-DPy_BUILD_CORE=1"],
+    ":windows_x86_64": ["-DPy_BUILD_CORE=1"],
+    "//conditions:default": [],
+})
+
 BOOTSTRAP_MODULES = declare_cpython_static_modules(
     name = "python_bootstrap_modules",
     version = PYTHON_VERSION,
     categories = ["bootstrap"],
-    copts = COMMON_COPTS,
+    copts = RUNTIME_MODULE_COPTS,
     deps = [":headers"],
 )
+
+STATIC_BOOTSTRAP_MODULES = declare_cpython_static_modules(
+    name = "python_static_bootstrap_modules",
+    version = PYTHON_VERSION,
+    categories = ["bootstrap"],
+    copts = COMMON_COPTS,
+    deps = [":bootstrap_headers"],
+)
+
+SHARED_MODULE_NAMES = (
+    ["_testcapi"] if PYTHON_VERSION in ["3.13", "3.14"] else []
+) + (["_asyncio"] if PYTHON_VERSION == "3.14" else [])
 
 STATIC_MODULES = declare_cpython_static_modules(
     name = "python_static_modules",
     version = PYTHON_VERSION,
-    copts = COMMON_COPTS,
+    copts = RUNTIME_MODULE_COPTS,
     deps = [":headers"],
+    exclude_modules = SHARED_MODULE_NAMES,
     module_libraries = BOOTSTRAP_MODULES.module_libraries,
 )
 
@@ -527,6 +642,29 @@ cc_library(
     alwayslink = True,
 )
 
+cc_library(
+    name = "python_bootstrap_ceval",
+    srcs = ["Python/ceval.c"],
+    copts = CORE_COPTS,
+    deps = [
+        ":bootstrap_headers",
+        ":bootstrap_pyconfig_contract",
+    ],
+    alwayslink = True,
+)
+
+cc_library(
+    name = "python_bootstrap_core_no_frozen",
+    srcs = BOOTSTRAP_CORE_SOURCES,
+    copts = CORE_COPTS,
+    deps = [
+        ":bootstrap_headers",
+        ":bootstrap_pyconfig_contract",
+        ":python_bootstrap_ceval",
+    ],
+    alwayslink = True,
+)
+
 cc_test(
     name = "libffi_complex_test",
     srcs = ["@cpython//python/private/libffi:complex_test.c"],
@@ -546,11 +684,23 @@ cc_binary(
         "Programs/_freeze_module.c",
     ],
     copts = CORE_COPTS,
-    deps = [
-        BOOTSTRAP_MODULES.library,
-        ":headers",
-        ":python_core_no_frozen",
-    ],
+    deps = select({
+        ":windows_arm64": [
+            STATIC_BOOTSTRAP_MODULES.library,
+            ":bootstrap_headers",
+            ":python_bootstrap_core_no_frozen",
+        ],
+        ":windows_x86_64": [
+            STATIC_BOOTSTRAP_MODULES.library,
+            ":bootstrap_headers",
+            ":python_bootstrap_core_no_frozen",
+        ],
+        "//conditions:default": [
+            BOOTSTRAP_MODULES.library,
+            ":headers",
+            ":python_core_no_frozen",
+        ],
+    }),
     linkopts = PLATFORM_LINKOPTS,
 )
 
@@ -606,7 +756,23 @@ GETPATH_COPTS = [
 ]
 
 DEEPFREEZE_SRCS = deepfreeze_sources(
-    bootstrap_modules = BOOTSTRAP_MODULES.library,
+    bootstrap_deps = select({
+        ":windows_arm64": [
+            STATIC_BOOTSTRAP_MODULES.library,
+            ":bootstrap_headers",
+            ":python_bootstrap_core_no_frozen",
+        ],
+        ":windows_x86_64": [
+            STATIC_BOOTSTRAP_MODULES.library,
+            ":bootstrap_headers",
+            ":python_bootstrap_core_no_frozen",
+        ],
+        "//conditions:default": [
+            BOOTSTRAP_MODULES.library,
+            ":headers",
+            ":python_core_no_frozen",
+        ],
+    }),
     core_copts = CORE_COPTS,
     frozen_modules = FROZEN_MODULES,
     getpath_copts = GETPATH_COPTS,
@@ -614,8 +780,6 @@ DEEPFREEZE_SRCS = deepfreeze_sources(
     needs_deepfreeze = PYTHON_NEEDS_DEEPFREEZE,
     version = PYTHON_VERSION,
 )
-
-SHARED_EXTENSIONS = shared_extensions(PYTHON_VERSION, PYTHON_SOABI)
 
 cc_library(
     name = "python_frozen",
@@ -636,12 +800,134 @@ cc_library(
     ],
 )
 
+cc_shared_library(
+    name = "python_dll",
+    deps = [
+        ":python_core_no_frozen",
+        ":python_frozen",
+        STATIC_MODULES.library,
+    ],
+    features = ["no_windows_export_all_symbols"],
+    shared_lib_name = "runtime/" + PYTHON_DLL,
+    target_compatible_with = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    user_link_flags = WINDOWS_LINK_LIBRARIES,
+)
+
+filegroup(
+    name = "python_dll_interface_library",
+    srcs = [":python_dll"],
+    output_group = "interface_library",
+)
+
+copy_file(
+    name = "python_import_library",
+    src = ":python_dll_interface_library",
+    out = "runtime/libs/" + PYTHON_IMPORT_LIBRARY,
+)
+
+cc_import(
+    name = "python_dll_import",
+    interface_library = ":python_import_library",
+    shared_library = ":python_dll",
+    target_compatible_with = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+)
+
+cc_library(
+    name = "python3_forwarder",
+    srcs = ["PC/python3dll.c"],
+    alwayslink = True,
+    copts = C_STANDARD_COPTS + [
+        "-DPYTHON_DLL_NAME=\\\"{}\\\"".format(PYTHON_DLL_BASENAME),
+    ],
+    target_compatible_with = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+)
+
+cc_shared_library(
+    name = "python3_dll",
+    deps = [":python3_forwarder"],
+    features = ["no_windows_export_all_symbols"],
+    shared_lib_name = "runtime/python3.dll",
+    target_compatible_with = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    user_link_flags = ["/NOENTRY"],
+)
+
+filegroup(
+    name = "python3_dll_interface_library",
+    srcs = [":python3_dll"],
+    output_group = "interface_library",
+)
+
+copy_file(
+    name = "python3_import_library",
+    src = ":python3_dll_interface_library",
+    out = "runtime/libs/python3.lib",
+)
+
+cc_import(
+    name = "python3_dll_import",
+    interface_library = ":python3_import_library",
+    shared_library = ":python3_dll",
+    target_compatible_with = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+)
+
+SHARED_EXTENSIONS = shared_extensions(
+    PYTHON_VERSION,
+    PYTHON_SOABI,
+    python_import = ":python_dll_import",
+    python_import_library = PYTHON_IMPORT_LIBRARY,
+    stable_import = ":python3_dll_import",
+)
+
 NATIVE_TEST_PROGRAMS = native_test_programs(
     version = PYTHON_VERSION,
-    core = ":python_runtime_core",
-    frozen = ":python_frozen",
-    headers = ":headers",
-    linkopts = PLATFORM_LINKOPTS,
+    deps = select({
+        ":windows_arm64": [
+            ":headers",
+            ":python_dll_import",
+        ],
+        ":windows_x86_64": [
+            ":headers",
+            ":python_dll_import",
+        ],
+        "//conditions:default": [
+            ":headers",
+            ":python_frozen",
+            ":python_runtime_core",
+        ],
+    }),
+    linkopts = PLATFORM_LINKOPTS + select({
+        ":windows_arm64": ["/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY],
+        ":windows_x86_64": ["/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY],
+        "//conditions:default": [],
+    }),
+    local_defines = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": [
+            "Py_BUILD_CORE=1",
+            "Py_BUILD_CORE_MODULE=1",
+        ],
+    }),
 )
 
 copy_to_directory(
@@ -651,8 +937,8 @@ copy_to_directory(
         ":darwin_x86_64": SHARED_EXTENSIONS.darwin_x86_64,
         ":linux_arm64": SHARED_EXTENSIONS.linux_arm64,
         ":linux_x86_64": SHARED_EXTENSIONS.linux_x86_64,
-        ":windows_arm64": [],
-        ":windows_x86_64": [],
+        ":windows_arm64": SHARED_EXTENSIONS.windows,
+        ":windows_x86_64": SHARED_EXTENSIONS.windows,
     }),
     out = "runtime/Lib",
     root_paths = [
@@ -699,13 +985,37 @@ PYTHON_RUNTIME_DATA = [
     ":runtime_pyconfig",
     ":runtime_setup_local",
     ":runtime_stdlib",
-] + NATIVE_TEST_PROGRAMS
+] + NATIVE_TEST_PROGRAMS + select({
+    ":windows_arm64": [
+        ":python3_dll",
+        ":python3_import_library",
+        ":python_dll",
+        ":python_import_library",
+    ],
+    ":windows_x86_64": [
+        ":python3_dll",
+        ":python3_import_library",
+        ":python_dll",
+        ":python_import_library",
+    ],
+    "//conditions:default": [],
+})
 
-PYTHON_RUNTIME_DEPS = [
-    ":headers",
-    ":python_frozen",
-    ":python_runtime_core",
-]
+PYTHON_RUNTIME_DEPS = select({
+    ":windows_arm64": [
+        ":headers",
+        ":python_dll_import",
+    ],
+    ":windows_x86_64": [
+        ":headers",
+        ":python_dll_import",
+    ],
+    "//conditions:default": [
+        ":headers",
+        ":python_frozen",
+        ":python_runtime_core",
+    ],
+})
 
 BUILD_METADATA = cpython_build_metadata(
     version = PYTHON_VERSION,
@@ -721,7 +1031,11 @@ cc_binary(
     copts = CORE_COPTS,
     data = PYTHON_RUNTIME_DATA + BUILD_METADATA.runtime_data,
     deps = PYTHON_RUNTIME_DEPS,
-    linkopts = PYTHON_LINKOPTS,
+    linkopts = PYTHON_LINKOPTS + select({
+        ":windows_arm64": ["/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY],
+        ":windows_x86_64": ["/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY],
+        "//conditions:default": [],
+    }),
 )
 
 alias(

@@ -23,9 +23,23 @@ def deepfreeze_sources(
         frozen_modules,
         getpath_copts,
         linkopts,
-        bootstrap_modules,
+        bootstrap_deps,
         version):
-    """Defines the bootstrap interpreter and deepfreeze action."""
+    """Defines the bootstrap interpreter and deepfreeze action.
+
+    Args:
+      needs_deepfreeze: Whether this CPython release requires deep-freeze output.
+      core_copts: C options used by the bootstrap interpreter.
+      frozen_modules: Frozen-header outputs and their module/source pairs.
+      getpath_copts: C options used by Modules/getpath.c.
+      linkopts: Link options used by the bootstrap interpreter.
+      bootstrap_deps: Static CPython targets used by the bootstrap interpreter.
+      version: The CPython minor version.
+
+    Returns:
+      The deep-freeze source label, or an empty list for releases that do not
+      require deep-freeze output.
+    """
     if not needs_deepfreeze:
         return []
 
@@ -40,11 +54,7 @@ def deepfreeze_sources(
             "Python/frozen_modules/zipimport.h",
         ],
         copts = getpath_copts + core_copts,
-        deps = [
-            bootstrap_modules,
-            ":headers",
-            ":python_core_no_frozen",
-        ],
+        deps = bootstrap_deps,
         linkopts = linkopts,
     )
 

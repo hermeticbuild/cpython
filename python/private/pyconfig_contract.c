@@ -146,11 +146,17 @@
     !defined(MS_WIN32) || !defined(MS_WIN64)
 #error "Windows builds must use the MSVC ABI on a 64-bit target"
 #endif
-#if !defined(MS_NO_COREDLL) || !defined(NT_THREADS) || !defined(WITH_THREAD)
-#error "Windows builds must use the static CPython thread configuration"
+#if !defined(NT_THREADS) || !defined(WITH_THREAD)
+#error "Windows builds must use the CPython Windows thread configuration"
 #endif
-#ifdef Py_ENABLE_SHARED
-#error "Windows builds must not enable the CPython shared-library ABI"
+#ifdef CPYTHON_BAZEL_STATIC_BOOTSTRAP
+#if !defined(MS_NO_COREDLL) || defined(Py_ENABLE_SHARED)
+#error "the Windows bootstrap must use the static CPython ABI"
+#endif
+#else
+#if !defined(MS_COREDLL) || !defined(Py_ENABLE_SHARED) || defined(MS_NO_COREDLL)
+#error "the Windows runtime must use the shared CPython ABI"
+#endif
 #endif
 #else
 #error "unsupported CPython platform"
