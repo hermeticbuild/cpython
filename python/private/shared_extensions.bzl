@@ -42,6 +42,7 @@ _VERSION_EXTENSIONS = {
         "_testexternalinspection": {
             "core_module": True,
             "srcs": ["Modules/_testexternalinspection.c"],
+            "windows": False,
         },
         "_testsinglephase": {
             "core_module": True,
@@ -167,21 +168,22 @@ def shared_extensions(
         )
         common_outputs.append(":" + output)
 
-        windows_output = module_name + ".pyd"
-        stable_abi = module_name in ["xxlimited", "xxlimited_35"]
-        version_abi = not stable_abi
-        _windows_extension(
-            name = windows_output,
-            srcs = extension["srcs"],
-            headers = headers,
-            core_module = extension["core_module"],
-            python_import = python_import,
-            python_import_library = python_import_library,
-            stable_abi = stable_abi,
-            stable_import = stable_import,
-            version_abi = version_abi,
-        )
-        windows_outputs.append(":" + windows_output)
+        if extension.get("windows", True):
+            windows_output = module_name + ".pyd"
+            stable_abi = module_name in ["xxlimited", "xxlimited_35"]
+            version_abi = not stable_abi
+            _windows_extension(
+                name = windows_output,
+                srcs = extension["srcs"],
+                headers = headers,
+                core_module = extension["core_module"],
+                python_import = python_import,
+                python_import_library = python_import_library,
+                stable_abi = stable_abi,
+                stable_import = stable_import,
+                version_abi = version_abi,
+            )
+            windows_outputs.append(":" + windows_output)
 
     darwin_outputs = common_outputs
     linux_arm64_outputs = common_outputs
