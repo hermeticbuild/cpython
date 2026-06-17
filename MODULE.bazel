@@ -33,6 +33,7 @@ single_version_override(
     patches = [
         "//python/patches/rules_cc_autoconf:windows-clang-cl-command-line.patch",
         "//python/patches/rules_cc_autoconf:windows-clang-cl-exceptions.patch",
+        "//python/patches/rules_cc_autoconf:windows-msvc-driver-link-flags.patch",
     ],
     version = "0.12.1",
 )
