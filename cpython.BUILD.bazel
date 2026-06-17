@@ -1094,7 +1094,7 @@ VENV_LAUNCHER_LINKOPTS = (
 )
 
 cc_binary(
-    name = "runtime/Lib/venv/scripts/nt/venvlauncher",
+    name = "runtime_stdlib_inputs/venv/scripts/nt/venvlauncher",
     srcs = [VENV_LAUNCHER_SOURCE],
     additional_linker_inputs = [":venvlauncher_resource"],
     deps = [":headers"],
@@ -1108,7 +1108,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "runtime/Lib/venv/scripts/nt/venvwlauncher",
+    name = "runtime_stdlib_inputs/venv/scripts/nt/venvwlauncher",
     srcs = [VENV_LAUNCHER_SOURCE],
     additional_linker_inputs = [":venvwlauncher_resource"],
     deps = [":headers"],
@@ -1173,12 +1173,19 @@ copy_to_directory(
         ":darwin_x86_64": SHARED_EXTENSIONS.darwin_x86_64,
         ":linux_arm64": SHARED_EXTENSIONS.linux_arm64,
         ":linux_x86_64": SHARED_EXTENSIONS.linux_x86_64,
-        ":windows_arm64": SHARED_EXTENSIONS.windows,
-        ":windows_x86_64": SHARED_EXTENSIONS.windows,
+        ":windows_arm64": SHARED_EXTENSIONS.windows + [
+            ":runtime_stdlib_inputs/venv/scripts/nt/venvlauncher",
+            ":runtime_stdlib_inputs/venv/scripts/nt/venvwlauncher",
+        ],
+        ":windows_x86_64": SHARED_EXTENSIONS.windows + [
+            ":runtime_stdlib_inputs/venv/scripts/nt/venvlauncher",
+            ":runtime_stdlib_inputs/venv/scripts/nt/venvwlauncher",
+        ],
     }),
     out = "runtime/Lib",
     root_paths = [
         "Lib",
+        "runtime_stdlib_inputs",
         ".",
     ],
 )
@@ -1233,8 +1240,6 @@ PYTHON_RUNTIME_DATA = [
         ":python3_import_library",
         ":python_dll",
         ":python_import_library",
-        ":runtime/Lib/venv/scripts/nt/venvlauncher",
-        ":runtime/Lib/venv/scripts/nt/venvwlauncher",
         ":runtime/pythonw",
     ],
     ":windows_x86_64": [
@@ -1242,8 +1247,6 @@ PYTHON_RUNTIME_DATA = [
         ":python3_import_library",
         ":python_dll",
         ":python_import_library",
-        ":runtime/Lib/venv/scripts/nt/venvlauncher",
-        ":runtime/Lib/venv/scripts/nt/venvwlauncher",
         ":runtime/pythonw",
     ],
     "//conditions:default": [
