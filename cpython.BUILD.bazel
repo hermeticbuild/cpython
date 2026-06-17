@@ -356,6 +356,17 @@ cc_library(
     srcs = ["@cpython//python/private:pyconfig_contract.c"],
     copts = C_STANDARD_COPTS,
     deps = [":headers"],
+    local_defines = select({
+        ":windows_arm64": [
+            "MS_NO_COREDLL=1",
+            "Py_NO_ENABLE_SHARED=1",
+        ],
+        ":windows_x86_64": [
+            "MS_NO_COREDLL=1",
+            "Py_NO_ENABLE_SHARED=1",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 CORE_SOURCES = glob([
