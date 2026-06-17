@@ -38,6 +38,36 @@ static void *allocate(size_t size) {
   return result;
 }
 
+static bool read_line(FILE *input, char **line, size_t *capacity) {
+  if (*line == NULL) {
+    *capacity = 256;
+    *line = allocate(*capacity);
+  }
+
+  size_t length = 0;
+  int character;
+  while ((character = fgetc(input)) != EOF) {
+    if (length + 1 >= *capacity) {
+      size_t new_capacity = *capacity * 2;
+      char *new_line = realloc(*line, new_capacity);
+      if (new_line == NULL) {
+        fail("out of memory", NULL);
+      }
+      *line = new_line;
+      *capacity = new_capacity;
+    }
+    (*line)[length++] = (char)character;
+    if (character == '\n') {
+      break;
+    }
+  }
+  if (length == 0 && character == EOF) {
+    return false;
+  }
+  (*line)[length] = '\0';
+  return true;
+}
+
 static char *duplicate_range(const char *begin, size_t length) {
   char *result = allocate(length + 1);
   memcpy(result, begin, length);
@@ -238,7 +268,7 @@ static void parse_config_h(Variables *variables, const char *path) {
   }
   char *line = NULL;
   size_t capacity = 0;
-  while (getline(&line, &capacity, input) >= 0) {
+  while (read_line(input, &line, &capacity)) {
     parse_config_line(variables, line);
   }
   if (ferror(input)) {
@@ -255,7 +285,7 @@ static void parse_build_vars(Variables *variables, const char *path) {
   }
   char *line = NULL;
   size_t capacity = 0;
-  while (getline(&line, &capacity, input) >= 0) {
+  while (read_line(input, &line, &capacity)) {
     size_t length = strlen(line);
     if (length == 0 || line[length - 1] != '\n') {
       fail("invalid build variable manifest line", line);
@@ -370,7 +400,7 @@ static void copy_test_subdirs(FILE *output, const char *template_path) {
   size_t capacity = 0;
   bool copying = false;
   bool found = false;
-  while (getline(&line, &capacity, input) >= 0) {
+  while (read_line(input, &line, &capacity)) {
     if (!copying) {
       if (strncmp(line, prefix, sizeof(prefix) - 1) != 0) {
         continue;
