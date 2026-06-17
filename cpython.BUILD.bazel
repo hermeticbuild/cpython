@@ -1082,6 +1082,8 @@ cc_binary(
 )
 
 VENV_LAUNCHER_SOURCE = "PC/launcher.c" if PYTHON_VERSION in ["3.11", "3.12"] else "PC/venvlauncher.c"
+VENV_LAUNCHER_RUNTIME_NAME = "python" if PYTHON_VERSION in ["3.11", "3.12"] else "venvlauncher"
+VENVW_LAUNCHER_RUNTIME_NAME = "pythonw" if PYTHON_VERSION in ["3.11", "3.12"] else "venvwlauncher"
 VENV_LAUNCHER_COMMON_DEFINES = ["VENV_REDIRECT"] if PYTHON_VERSION in ["3.11", "3.12"] else []
 VENV_LAUNCHER_CONSOLE_DEFINES = VENV_LAUNCHER_COMMON_DEFINES + [
     "_CONSOLE",
@@ -1094,7 +1096,7 @@ VENV_LAUNCHER_LINKOPTS = (
 )
 
 cc_binary(
-    name = "runtime_stdlib_inputs/venv/scripts/nt/venvlauncher",
+    name = "runtime_stdlib_inputs/venv/scripts/nt/" + VENV_LAUNCHER_RUNTIME_NAME,
     srcs = [VENV_LAUNCHER_SOURCE],
     additional_linker_inputs = [":venvlauncher_resource"],
     deps = [":headers"],
@@ -1108,7 +1110,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "runtime_stdlib_inputs/venv/scripts/nt/venvwlauncher",
+    name = "runtime_stdlib_inputs/venv/scripts/nt/" + VENVW_LAUNCHER_RUNTIME_NAME,
     srcs = [VENV_LAUNCHER_SOURCE],
     additional_linker_inputs = [":venvwlauncher_resource"],
     deps = [":headers"],
@@ -1174,12 +1176,12 @@ copy_to_directory(
         ":linux_arm64": SHARED_EXTENSIONS.linux_arm64,
         ":linux_x86_64": SHARED_EXTENSIONS.linux_x86_64,
         ":windows_arm64": SHARED_EXTENSIONS.windows + [
-            ":runtime_stdlib_inputs/venv/scripts/nt/venvlauncher",
-            ":runtime_stdlib_inputs/venv/scripts/nt/venvwlauncher",
+            ":runtime_stdlib_inputs/venv/scripts/nt/" + VENV_LAUNCHER_RUNTIME_NAME,
+            ":runtime_stdlib_inputs/venv/scripts/nt/" + VENVW_LAUNCHER_RUNTIME_NAME,
         ],
         ":windows_x86_64": SHARED_EXTENSIONS.windows + [
-            ":runtime_stdlib_inputs/venv/scripts/nt/venvlauncher",
-            ":runtime_stdlib_inputs/venv/scripts/nt/venvwlauncher",
+            ":runtime_stdlib_inputs/venv/scripts/nt/" + VENV_LAUNCHER_RUNTIME_NAME,
+            ":runtime_stdlib_inputs/venv/scripts/nt/" + VENVW_LAUNCHER_RUNTIME_NAME,
         ],
     }),
     out = "runtime/Lib",
