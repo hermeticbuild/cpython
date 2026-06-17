@@ -11,6 +11,7 @@ load("@cpython//python/private:upstream_tests.bzl", "upstream_regrtests")
 load("@cpython//python/private/sysconfig:sysconfig.bzl", "cpython_sysconfig", "merge_sysconfig_build_vars")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("//bazel:release.bzl", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_SOABI", "PYTHON_VERSION")
 
 package(default_visibility = ["//visibility:public"])
@@ -359,6 +360,7 @@ CORE_SOURCES = glob([
     "Python/*.c",
 ], exclude = [
     "Python/bytecodes.c",
+    "Python/ceval.c",
     "Python/_contextvars.c",
     "Python/dup2.c",
     "Python/dynload_hpux.c",
@@ -422,6 +424,8 @@ COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
 
 CORE_COPTS = ["-DPy_BUILD_CORE=1"] + COMMON_COPTS
 
+CEVAL_COPTS = ["-finline-max-stacksize=512"] if PYTHON_VERSION == "3.14" else []
+
 BOOTSTRAP_MODULES = declare_cpython_static_modules(
     name = "python_bootstrap_modules",
     version = PYTHON_VERSION,
@@ -439,14 +443,45 @@ STATIC_MODULES = declare_cpython_static_modules(
 )
 
 cc_library(
-    name = "python_core_no_frozen",
-    srcs = CORE_SOURCES,
-    copts = CORE_COPTS,
+    name = "python_ceval",
+    srcs = ["Python/ceval.c"],
+    copts = CORE_COPTS + select({
+        ":darwin_arm64": CEVAL_COPTS,
+        ":darwin_x86_64": CEVAL_COPTS,
+        ":linux_arm64": CEVAL_COPTS,
+        ":linux_x86_64": CEVAL_COPTS,
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+    }),
     deps = [
         ":headers",
         ":pyconfig_contract",
     ],
     alwayslink = True,
+)
+
+cc_library(
+    name = "python_core_no_frozen",
+    srcs = CORE_SOURCES,
+    copts = CORE_COPTS,
+    deps = [
+        ":headers",
+        ":python_ceval",
+        ":pyconfig_contract",
+    ],
+    alwayslink = True,
+)
+
+cc_test(
+    name = "libffi_complex_test",
+    srcs = ["@cpython//python/private/libffi:complex_test.c"],
+    deps = ["@cpython_libffi//:libffi"],
+    tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
+    target_compatible_with = select({
+        ":windows_arm64": ["@platforms//:incompatible"],
+        ":windows_x86_64": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_binary(

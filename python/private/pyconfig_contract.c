@@ -43,6 +43,55 @@
     !defined(HAVE_WORKING_TZSET) || !defined(PTHREAD_SYSTEM_SCHED_SUPPORTED)
 #error "the supported POSIX targets must provide the required capabilities"
 #endif
+
+#if !defined(HAVE_BZLIB_H) || !defined(HAVE_LIBSQLITE3) ||                    \
+    !defined(HAVE_LZMA_H) || !defined(HAVE_ZLIB_COPY) ||                      \
+    !defined(HAVE_ZLIB_H) || !defined(PY_SQLITE_HAVE_SERIALIZE) ||            \
+    !defined(PY_SSL_DEFAULT_CIPHERS)
+#error "the bundled dependencies must provide their configured capabilities"
+#endif
+
+#if PY_VERSION_HEX >= 0x030C0000 &&                                           \
+    (!defined(HAVE_FFI_CLOSURE_ALLOC) || !defined(HAVE_FFI_PREP_CIF_VAR) ||   \
+     !defined(HAVE_FFI_PREP_CLOSURE_LOC))
+#error "the bundled libffi must provide its configured capabilities"
+#endif
+
+#if PY_VERSION_HEX < 0x030C0000 &&                                            \
+    (!defined(HAVE_MEMORY_H) || !defined(HAVE_STDARG_PROTOTYPES) ||            \
+     !defined(HAVE_TTYNAME) || !defined(PY_FORMAT_SIZE_T) ||                   \
+     !defined(TIME_WITH_SYS_TIME))
+#error "CPython 3.11 must provide its compatibility definitions"
+#endif
+
+#if defined(__x86_64__)
+#if !defined(HAVE_GCC_ASM_FOR_X64)
+#error "the supported x86_64 targets must provide the x64 assembly check"
+#endif
+#if defined(__linux__) && !defined(HAVE_GCC_ASM_FOR_X87)
+#error "the supported Linux x86_64 target must provide the x87 assembly check"
+#endif
+#if defined(__APPLE__) && PY_VERSION_HEX < 0x030C0000 &&                       \
+    defined(HAVE_GCC_ASM_FOR_X87)
+#error "CPython 3.11 must disable x87 assembly on Darwin x86_64"
+#endif
+#if defined(__APPLE__) && PY_VERSION_HEX >= 0x030C0000 &&                      \
+    !defined(HAVE_GCC_ASM_FOR_X87)
+#error "CPython 3.12 and newer must enable x87 assembly on Darwin x86_64"
+#endif
+#elif defined(__aarch64__)
+#if defined(HAVE_GCC_ASM_FOR_X64) || defined(HAVE_GCC_ASM_FOR_X87)
+#error "the supported arm64 targets must not provide x86 assembly checks"
+#endif
+#endif
+
+#if PY_VERSION_HEX >= 0x030E0000 &&                                           \
+    (!defined(HAVE_BACKTRACE) || !defined(HAVE_DLADDR) ||                     \
+     !defined(HAVE_EXECINFO_H) || !defined(HAVE_PTHREAD_GETNAME_NP) ||        \
+     !defined(HAVE_PTHREAD_SETNAME_NP) || !defined(Py_REMOTE_DEBUG) ||        \
+     !defined(_Py_FFI_SUPPORT_C_COMPLEX) || !defined(_Py_STACK_GROWS_DOWN))
+#error "CPython 3.14 must provide its required POSIX capabilities"
+#endif
 #endif
 
 #if !defined(MS_WINDOWS) && PY_VERSION_HEX >= 0x030D0000 &&                    \
@@ -63,12 +112,18 @@
     !defined(HAVE_SYS_SYSMACROS_H) || !defined(HAVE_SYS_XATTR_H) ||            \
     !defined(HAVE_UNSHARE) || !defined(MAJOR_IN_SYSMACROS) ||                  \
     !defined(PTHREAD_KEY_T_IS_COMPATIBLE_WITH_INT)
-#error "Linux arm64 must provide the required Linux capabilities"
+#error "the supported Linux targets must provide the required Linux capabilities"
 #endif
 #endif
 #if PY_VERSION_HEX >= 0x030D0000 &&                                            \
     (!defined(HAVE_SYS_TIMERFD_H) || !defined(HAVE_TIMERFD_CREATE))
 #error "CPython 3.13 and newer on Linux must provide timerfd"
+#endif
+#if PY_VERSION_HEX >= 0x030E0000 &&                                           \
+    (!defined(HAVE_DLADDR1) || !defined(HAVE_LINK_H) ||                       \
+     !defined(HAVE_LINUX_NETFILTER_IPV4_H) || !defined(HAVE_LINUX_SCHED_H) || \
+     !defined(HAVE_PTHREAD_GETATTR_NP) || _PYTHREAD_NAME_MAXLEN != 15)
+#error "CPython 3.14 on Linux must provide its platform capabilities"
 #endif
 #elif defined(__APPLE__)
 #if !defined(HAVE_CHFLAGS) ||                                                  \
@@ -76,12 +131,15 @@
     !defined(HAVE_LCHFLAGS) || !defined(HAVE_LCHMOD) ||                        \
     !defined(HAVE_SYS_EVENT_H) || !defined(HAVE_SYS_KERN_CONTROL_H) ||         \
     !defined(HAVE_SYS_SYS_DOMAIN_H)
-#error "Darwin arm64 must provide the required Darwin capabilities"
+#error "the supported Darwin targets must provide the required Darwin capabilities"
 #endif
 #if PY_VERSION_HEX >= 0x030D0000 &&                                            \
     !defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
 #error                                                                         \
     "CPython 3.13 and newer on Darwin must provide pthread_cond_timedwait_relative_np"
+#endif
+#if PY_VERSION_HEX >= 0x030E0000 && _PYTHREAD_NAME_MAXLEN != 63
+#error "CPython 3.14 on Darwin must use a 63-byte pthread name limit"
 #endif
 #elif defined(MS_WINDOWS)
 #if !defined(_MSC_VER) || !defined(MS_WIN64)

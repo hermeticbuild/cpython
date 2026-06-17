@@ -27,6 +27,19 @@ _EXPLICIT_DEFINE_PATTERN = re.compile(
     r"([A-Za-z_][A-Za-z0-9_]*)[\"']",
 )
 _QUOTED_STRING_PATTERN = re.compile(r"[\"']([^\"']+)[\"']")
+_SUPPORTED_VERSIONS = ("3.11", "3.12", "3.13", "3.14")
+_SUPPORTED_PLATFORMS = (
+    "darwin_arm64",
+    "darwin_x86_64",
+    "linux_arm64",
+    "linux_x86_64",
+)
+_PLATFORM_OUTPUT_CONFIGS = {
+    "darwin_arm64": "macos_aarch64",
+    "darwin_x86_64": "macos_x86_64",
+    "linux_arm64": "linux_aarch64",
+    "linux_x86_64": "linux_x86_64",
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -46,12 +59,14 @@ class GeneratedConfig:
     manifest: pathlib.Path
     values: dict[str, str | None]
     producers: frozenset[str]
+    producer_paths: frozenset[str]
 
 
 @dataclasses.dataclass(frozen=True)
 class Disposition:
     classification: str
     justification: str
+    expected_values: dict[str, str | None] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -293,6 +308,9 @@ def _load_generated_config(specification: str) -> GeneratedConfig:
         manifest=manifest,
         values=values,
         producers=frozenset(manifest_data["defines"]),
+        producer_paths=frozenset(
+            item["path"] for item in manifest_data["defines"].values()
+        ),
     )
 
 
@@ -306,20 +324,43 @@ def _load_dispositions(
     if path is None:
         return {}, {}, ()
     data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("schema_version") != 1:
+    if data.get("schema_version") != 2:
         raise ValueError(f"unsupported disposition schema in {path}")
 
     overrides = {}
     for symbol, item in data.get("overrides", {}).items():
         if not _SYMBOL_PATTERN.fullmatch(symbol):
             raise ValueError(f"invalid disposition symbol {symbol!r}")
+        expected_values = item.get("expected_values", {})
+        if not isinstance(expected_values, dict):
+            raise ValueError(f"expected_values for {symbol} must be an object")
+        for selector, value in expected_values.items():
+            try:
+                version, platform = selector.split(":", 1)
+            except ValueError as error:
+                raise ValueError(
+                    f"invalid expected-value selector {selector!r} for {symbol}"
+                ) from error
+            if version != "*" and version not in _SUPPORTED_VERSIONS:
+                raise ValueError(
+                    f"invalid expected-value version {version!r} for {symbol}"
+                )
+            if platform != "*" and platform not in _SUPPORTED_PLATFORMS:
+                raise ValueError(
+                    f"invalid expected-value platform {platform!r} for {symbol}"
+                )
+            if value is not None and not isinstance(value, str):
+                raise ValueError(
+                    f"expected value for {symbol} {selector} must be a string or null"
+                )
         overrides[symbol] = Disposition(
             classification=item["classification"],
             justification=item["justification"],
+            expected_values=expected_values,
         )
     reviewed_undefined = {}
     justifications = {
-        "EXPECTED_FALSE": "The configure result is false on Linux arm64 and Darwin arm64.",
+        "EXPECTED_FALSE": "The configure result is false on every supported POSIX target.",
         "HEADER_DERIVED": (
             "CPython headers derive this value; pyconfig.h intentionally leaves it "
             "undefined."
@@ -332,7 +373,8 @@ def _load_dispositions(
             "module."
         ),
         "UNSUPPORTED_PLATFORM": (
-            "The symbol belongs to a platform outside Linux arm64 and Darwin arm64."
+            "The symbol belongs to a platform outside the supported Linux and Darwin "
+            "arm64 and x86_64 targets."
         ),
     }
     for classification, symbols in data.get("reviewed_undefined", {}).items():
@@ -375,6 +417,118 @@ def _format_evidence(items: Iterable[str]) -> str:
     return "<br>".join(values) if values else "—"
 
 
+def _has_producer_for_each_generated_config(
+    symbol: str,
+    sources: Sequence[SourceVersion],
+    generated: Sequence[GeneratedConfig],
+) -> bool:
+    source_by_version = {source.version: source for source in sources}
+    applicable = [
+        item
+        for item in generated
+        if symbol in source_by_version[item.version].template_symbols
+    ]
+    return bool(applicable) and all(symbol in item.producers for item in applicable)
+
+
+def _expected_value(
+    disposition: Disposition,
+    generated: GeneratedConfig,
+) -> tuple[bool, str | None]:
+    matches = []
+    for selector, value in disposition.expected_values.items():
+        version, platform = selector.split(":", 1)
+        if version not in ("*", generated.version):
+            continue
+        if platform not in ("*", generated.platform):
+            continue
+        specificity = int(version != "*") + int(platform != "*")
+        matches.append((specificity, selector, value))
+    if not matches:
+        return False, None
+    highest_specificity = max(item[0] for item in matches)
+    best = [item for item in matches if item[0] == highest_specificity]
+    if len(best) != 1:
+        selectors = ", ".join(repr(item[1]) for item in best)
+        raise ValueError(
+            f"ambiguous expected-value selectors for {generated.version} "
+            f"{generated.platform}: {selectors}"
+        )
+    return True, best[0][2]
+
+
+def _validate_expected_values(
+    sources: Sequence[SourceVersion],
+    generated: Sequence[GeneratedConfig],
+    overrides: dict[str, Disposition],
+    reviewed_undefined: dict[str, Disposition],
+) -> None:
+    source_by_version = {source.version: source for source in sources}
+    errors = []
+    for item in generated:
+        template_symbols = source_by_version[item.version].template_symbols
+        for symbol, disposition in overrides.items():
+            if symbol not in template_symbols or not disposition.expected_values:
+                continue
+            has_expected, expected = _expected_value(disposition, item)
+            if not has_expected:
+                errors.append(
+                    f"{symbol} has no expected value for {item.version} {item.platform}"
+                )
+                continue
+            actual = item.values[symbol]
+            if actual != expected:
+                errors.append(
+                    f"{symbol} is {actual!r}, expected {expected!r} for "
+                    f"{item.version} {item.platform}"
+                )
+            if expected is not None and symbol not in item.producers:
+                errors.append(
+                    f"{symbol} has no producer for {item.version} {item.platform}"
+                )
+        for symbol in reviewed_undefined:
+            if symbol in template_symbols and item.values[symbol] is not None:
+                errors.append(
+                    f"{symbol} must be undefined for {item.version} {item.platform}"
+                )
+    if errors:
+        raise ValueError(
+            f"{len(errors)} generated values violate their dispositions: "
+            + "; ".join(errors[:20])
+        )
+
+
+def _validate_generated_identity(item: GeneratedConfig) -> None:
+    output_config = _PLATFORM_OUTPUT_CONFIGS[item.platform]
+    repository = f"+python+python{item.version.replace('.', '_')}"
+    expected_output = f"/bazel-out/{output_config}-"
+    expected_repository = f"/external/{repository}/"
+    header = item.header.as_posix()
+    manifest = item.manifest.as_posix()
+    if expected_output not in header or expected_repository not in header:
+        raise ValueError(
+            f"generated {item.version} {item.platform} header has inconsistent "
+            f"provenance: {item.header}"
+        )
+    if expected_output not in manifest or expected_repository not in manifest:
+        raise ValueError(
+            f"generated {item.version} {item.platform} manifest has inconsistent "
+            f"provenance: {item.manifest}"
+        )
+    producer_prefix = f"bazel-out/{output_config}-"
+    producer_repository = f"/external/{repository}/"
+    invalid_paths = sorted(
+        path
+        for path in item.producer_paths
+        if not path.startswith(producer_prefix) or producer_repository not in path
+    )
+    if invalid_paths:
+        raise ValueError(
+            f"generated {item.version} {item.platform} manifest contains "
+            f"inconsistent producer path {invalid_paths[0]!r}"
+        )
+
+
 def _render_checklist(
     sources: Sequence[SourceVersion],
     pyconfig_display: str,
@@ -393,10 +547,16 @@ def _render_checklist(
     for symbol in symbols:
         if symbol in overrides:
             classifications[symbol] = overrides[symbol]
-        elif symbol in manifest_producers or (not generated and symbol in implementation):
+        elif (
+            _has_producer_for_each_generated_config(symbol, sources, generated)
+            or (not generated and symbol in implementation)
+        ):
             classifications[symbol] = Disposition(
                 classification="PROBE",
-                justification="Generated by a rules_cc_autoconf producer.",
+                justification=(
+                    "Generated by a rules_cc_autoconf producer in every applicable "
+                    "generated configuration."
+                ),
             )
         elif symbol in reviewed_undefined:
             classifications[symbol] = reviewed_undefined[symbol]
@@ -417,8 +577,15 @@ def _render_checklist(
         "`python/private/pyconfig.bzl` and generated `rules_cc_autoconf` manifests. "
         "The generator reads `configure.ac`; it does not execute `configure`.",
         "",
+        "The `configure.ac` columns contain lexical occurrences for source navigation; "
+        "they are not producer classifications. Producer classifications come from "
+        "the generated manifests and reviewed dispositions.",
+        "",
         "A checked row has a producer or an explicit reviewed disposition. An unchecked "
         "row is not audited and makes `--require-classified` fail.",
+        "",
+        "Reviewed expected values are checked against every applicable generated "
+        "configuration. Reviewed undefined symbols must remain undefined.",
         "",
         "## Inputs",
         "",
@@ -440,8 +607,8 @@ def _render_checklist(
     lines.extend(
         [
             "",
-            "Run `tools/configure_checklist.py --help` for the regeneration command "
-            "arguments. Use `--check --require-classified` in validation.",
+            "Run `tools/configure_check_audit.sh` to regenerate this file. CI runs "
+            "`tools/configure_check_audit.sh --check`.",
             "",
             "## Summary",
             "",
@@ -472,7 +639,9 @@ def _render_checklist(
             )
 
     header = ["Status", "Symbol", "Classification"]
-    header.extend(f"CPython {source.version} `configure.ac`" for source in sources)
+    header.extend(
+        f"CPython {source.version} `configure.ac` occurrences" for source in sources
+    )
     header.extend(
         f"{item.version} {item.platform} generated" for item in generated
     )
@@ -517,7 +686,10 @@ def _render_checklist(
     lines.extend(
         [
             "",
-            "## Configure decisions outside pyconfig.h.in",
+            "## Reviewed configure decisions outside pyconfig.h.in",
+            "",
+            "These decisions are maintained explicitly because they do not emit "
+            "`pyconfig.h.in` symbols.",
             "",
             "| Decision | Classification | Implementation | Justification |",
             "|---|---|---|---|",
@@ -612,6 +784,8 @@ def main(argv: Sequence[str]) -> int:
             )
         source_by_version = {source.version: source for source in sources}
         generated_keys: set[tuple[str, str]] = set()
+        generated_headers: set[pathlib.Path] = set()
+        generated_manifests: set[pathlib.Path] = set()
         for item in generated:
             key = (item.version, item.platform)
             if key in generated_keys:
@@ -621,6 +795,17 @@ def main(argv: Sequence[str]) -> int:
                 raise ValueError(
                     f"generated configuration has unknown version {item.version}"
                 )
+            if item.platform not in _SUPPORTED_PLATFORMS:
+                raise ValueError(
+                    f"generated configuration has unknown platform {item.platform}"
+                )
+            if item.header in generated_headers:
+                raise ValueError(f"generated header reused: {item.header}")
+            if item.manifest in generated_manifests:
+                raise ValueError(f"generated manifest reused: {item.manifest}")
+            generated_headers.add(item.header)
+            generated_manifests.add(item.manifest)
+            _validate_generated_identity(item)
             missing_values = sorted(
                 source_by_version[item.version].template_symbols - item.values.keys()
             )
@@ -630,6 +815,30 @@ def main(argv: Sequence[str]) -> int:
                     f"{len(missing_values)} template symbols: "
                     + ", ".join(missing_values[:20])
                 )
+        if arguments.require_classified:
+            if set(source_by_version) != set(_SUPPORTED_VERSIONS):
+                raise ValueError(
+                    "--require-classified requires CPython sources "
+                    + ", ".join(_SUPPORTED_VERSIONS)
+                )
+            expected_generated_keys = {
+                (version, platform)
+                for version in _SUPPORTED_VERSIONS
+                for platform in _SUPPORTED_PLATFORMS
+            }
+            if generated_keys != expected_generated_keys:
+                missing = sorted(expected_generated_keys - generated_keys)
+                extra = sorted(generated_keys - expected_generated_keys)
+                raise ValueError(
+                    "--require-classified requires the complete generated matrix; "
+                    f"missing={missing!r}, extra={extra!r}"
+                )
+        _validate_expected_values(
+            sources,
+            generated,
+            overrides,
+            reviewed_undefined,
+        )
         markdown = _render_checklist(
             sources,
             pyconfig_display,
@@ -639,11 +848,14 @@ def main(argv: Sequence[str]) -> int:
             reviewed_undefined,
             decisions,
         )
-        producers = set().union(*(item.producers for item in generated)) if generated else set()
         unclassified = sorted(
             symbol
             for symbol in symbols
-            if symbol not in producers
+            if not _has_producer_for_each_generated_config(
+                symbol,
+                sources,
+                generated,
+            )
             and (generated or symbol not in implementation)
             and symbol not in overrides
             and symbol not in reviewed_undefined

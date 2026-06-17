@@ -5,16 +5,30 @@ load("@rules_cc_autoconf//autoconf:checks.bzl", "utils")
 load("@rules_cc_autoconf//autoconf:defs.bzl", "autoconf", "autoconf_hdr", "checks", "macros")
 
 _SYSTEM_EXTENSION_DEFINES = [
+    "_ALL_SOURCE",
+    "_HPUX_ALT_XOPEN_SOCKET_API",
     "_NETBSD_SOURCE",
+    "_OPENBSD_SOURCE",
     "_DARWIN_C_SOURCE",
     "_FILE_OFFSET_BITS",
     "_GNU_SOURCE",
     "_LARGEFILE_SOURCE",
     "_POSIX_C_SOURCE",
+    "_POSIX_PTHREAD_SEMANTICS",
     "_REENTRANT",
+    "_TANDEM_SOURCE",
     "_XOPEN_SOURCE",
     "_XOPEN_SOURCE_EXTENDED",
     "__BSD_VISIBLE",
+    "__EXTENSIONS__",
+    "__STDC_WANT_IEC_60559_ATTRIBS_EXT__",
+    "__STDC_WANT_IEC_60559_BFP_EXT__",
+    "__STDC_WANT_IEC_60559_DFP_EXT__",
+    "__STDC_WANT_IEC_60559_EXT__",
+    "__STDC_WANT_IEC_60559_FUNCS_EXT__",
+    "__STDC_WANT_IEC_60559_TYPES_EXT__",
+    "__STDC_WANT_LIB_EXT2__",
+    "__STDC_WANT_MATH_SPEC_FUNCS__",
 ]
 
 _HEADERS = [
@@ -114,13 +128,24 @@ _HEADERS = [
     "wchar.h",
 ]
 
-_HEADERS_3_12 = [
+_HEADERS_3_11_12 = [
     "crypt.h",
     "ieeefp.h",
 ]
 
+_HEADERS_3_11 = [
+    "memory.h",
+]
+
 _HEADERS_3_13 = [
     "sys/timerfd.h",
+]
+
+_HEADERS_3_14 = [
+    "execinfo.h",
+    "link.h",
+    "linux/netfilter_ipv4.h",
+    "linux/sched.h",
 ]
 
 _FUNCTIONS = [
@@ -383,13 +408,24 @@ _PACKAGE_DEFINES = [
     "PACKAGE_VERSION",
 ]
 
-def _common_fixed_defines():
-    return [
+def _common_fixed_defines(version):
+    defines = [
+        checks.AC_DEFINE("_ALL_SOURCE", 1),
         checks.AC_DEFINE("DOUBLE_IS_LITTLE_ENDIAN_IEEE754", 1),
         checks.AC_DEFINE("ENABLE_IPV6", 1),
+        checks.AC_DEFINE("HAVE_BZLIB_H", 1),
+        checks.AC_DEFINE("HAVE_FFI_CLOSURE_ALLOC", 1),
+        checks.AC_DEFINE("HAVE_FFI_PREP_CIF_VAR", 1),
+        checks.AC_DEFINE("HAVE_FFI_PREP_CLOSURE_LOC", 1),
+        checks.AC_DEFINE("HAVE_LIBSQLITE3", 1),
+        checks.AC_DEFINE("HAVE_LZMA_H", 1),
         checks.AC_DEFINE("HAVE_PROTOTYPES", 1),
+        checks.AC_DEFINE("HAVE_ZLIB_COPY", 1),
+        checks.AC_DEFINE("HAVE_ZLIB_H", 1),
         checks.AC_DEFINE("PY_COERCE_C_LOCALE", 1),
-        checks.AC_DEFINE("PY_BUILTIN_HASHLIB_HASHES", '"md5,sha1,sha2,sha3,blake2"'),
+        checks.AC_DEFINE("PY_BUILTIN_HASHLIB_HASHES", '"md5,sha1,sha256,sha512,sha3,blake2"' if version == "3.11" else '"md5,sha1,sha2,sha3,blake2"'),
+        checks.AC_DEFINE("PY_SSL_DEFAULT_CIPHERS", 1),
+        checks.AC_DEFINE("PY_SQLITE_HAVE_SERIALIZE", 1),
         checks.AC_DEFINE("RETSIGTYPE", "void"),
         checks.AC_DEFINE("STDC_HEADERS", 1),
         checks.AC_DEFINE("SYS_SELECT_WITH_SYS_TIME", 1),
@@ -399,15 +435,53 @@ def _common_fixed_defines():
         checks.AC_DEFINE("WITH_PYMALLOC", 1),
         checks.AC_DEFINE("_DARWIN_C_SOURCE", 1),
         checks.AC_DEFINE("_FILE_OFFSET_BITS", 64),
+        checks.AC_DEFINE("_GNU_SOURCE", 1),
         checks.AC_DEFINE("_LARGEFILE_SOURCE", 1),
         checks.AC_DEFINE("_NETBSD_SOURCE", 1),
+        checks.AC_DEFINE("_POSIX_PTHREAD_SEMANTICS", 1),
         checks.AC_DEFINE("_PYTHONFRAMEWORK", '\"\"'),
         checks.AC_DEFINE("_REENTRANT", 1),
+        checks.AC_DEFINE("_TANDEM_SOURCE", 1),
         checks.AC_DEFINE("__BSD_VISIBLE", 1),
-    ] + [checks.AC_FAIL(define) for define in _PACKAGE_DEFINES]
+        checks.AC_DEFINE("__EXTENSIONS__", 1),
+    ]
+    if version in ["3.12", "3.13", "3.14"]:
+        defines += [
+            checks.AC_DEFINE("_HPUX_ALT_XOPEN_SOCKET_API", 1),
+            checks.AC_DEFINE("_OPENBSD_SOURCE", 1),
+            checks.AC_DEFINE("__STDC_WANT_IEC_60559_ATTRIBS_EXT__", 1),
+            checks.AC_DEFINE("__STDC_WANT_IEC_60559_BFP_EXT__", 1),
+            checks.AC_DEFINE("__STDC_WANT_IEC_60559_DFP_EXT__", 1),
+            checks.AC_DEFINE("__STDC_WANT_IEC_60559_FUNCS_EXT__", 1),
+            checks.AC_DEFINE("__STDC_WANT_IEC_60559_TYPES_EXT__", 1),
+            checks.AC_DEFINE("__STDC_WANT_LIB_EXT2__", 1),
+            checks.AC_DEFINE("__STDC_WANT_MATH_SPEC_FUNCS__", 1),
+        ]
+    else:
+        defines += [
+            checks.AC_FAIL("_HPUX_ALT_XOPEN_SOCKET_API"),
+            checks.AC_FAIL("_OPENBSD_SOURCE"),
+            checks.AC_FAIL("__STDC_WANT_IEC_60559_ATTRIBS_EXT__"),
+            checks.AC_FAIL("__STDC_WANT_IEC_60559_BFP_EXT__"),
+            checks.AC_FAIL("__STDC_WANT_IEC_60559_DFP_EXT__"),
+            checks.AC_FAIL("__STDC_WANT_IEC_60559_FUNCS_EXT__"),
+            checks.AC_FAIL("__STDC_WANT_IEC_60559_TYPES_EXT__"),
+            checks.AC_FAIL("__STDC_WANT_LIB_EXT2__"),
+            checks.AC_FAIL("__STDC_WANT_MATH_SPEC_FUNCS__"),
+        ]
+    if version == "3.14":
+        defines += [
+            checks.AC_DEFINE("Py_REMOTE_DEBUG", 1),
+            checks.AC_DEFINE("_Py_FFI_SUPPORT_C_COMPLEX", 1),
+            checks.AC_DEFINE("_Py_STACK_GROWS_DOWN", 1),
+            checks.AC_DEFINE("__STDC_WANT_IEC_60559_EXT__", 1),
+        ]
+    else:
+        defines.append(checks.AC_FAIL("__STDC_WANT_IEC_60559_EXT__"))
+    return defines + [checks.AC_FAIL(define) for define in _PACKAGE_DEFINES]
 
-def _dynamic_loading_checks(linkopts):
-    return [
+def _dynamic_loading_checks(version, linkopts):
+    checks_list = [
         checks.AC_TRY_LINK(
             name = "ac_cv_func_dlopen",
             define = "HAVE_DLOPEN",
@@ -426,6 +500,22 @@ def _dynamic_loading_checks(linkopts):
             if_false = None,
         ),
     ]
+    if version == "3.14":
+        checks_list += [
+            _declared_function_check(
+                "dladdr",
+                "HAVE_DLADDR",
+                ["#include <dlfcn.h>"],
+                linkopts = linkopts,
+            ),
+            _declared_function_check(
+                "dladdr1",
+                "HAVE_DLADDR1",
+                ["#include <dlfcn.h>", "#include <link.h>"],
+                linkopts = linkopts,
+            ),
+        ]
+    return checks_list
 
 def _posix_shmem_checks(linkopts):
     return [
@@ -596,6 +686,25 @@ def _pty_checks(header, login_header, linkopts):
         ),
     ]
 
+def _thread_name_checks(version, linkopts):
+    if version != "3.14":
+        return []
+    return [
+        _declared_function_check(
+            function,
+            "HAVE_{}".format(function.upper()),
+            ["#include <pthread.h>"],
+            linkopts = linkopts,
+        )
+        for function in [
+            "pthread_getattr_np",
+            "pthread_getname_np",
+            "pthread_get_name_np",
+            "pthread_setname_np",
+            "pthread_set_name_np",
+        ]
+    ]
+
 def _declared_function_check(function, define, includes, requires = [], linkopts = []):
     return checks.AC_TRY_LINK(
         name = "ac_cv_func_{}".format(function),
@@ -716,6 +825,13 @@ def _special_function_checks(version):
             ["#include <sys/timerfd.h>"],
             requires = ["HAVE_SYS_TIMERFD_H"],
         ))
+    if version == "3.14":
+        checks_list.append(_declared_function_check(
+            "backtrace",
+            "HAVE_BACKTRACE",
+            ["#include <execinfo.h>"],
+            requires = ["HAVE_EXECINFO_H"],
+        ))
     return checks_list
 
 def _declaration_checks(version):
@@ -731,13 +847,6 @@ def _declaration_checks(version):
             "RTLD_MEMBER",
         ],
         includes = ["#include <dlfcn.h>"],
-        compile_defines = _SYSTEM_EXTENSION_DEFINES,
-        if_true = 1,
-        if_false = 0,
-    )
-    checks_list += macros.AC_CHECK_DECLS(
-        ["tzname"],
-        includes = ["#include <time.h>"],
         compile_defines = _SYSTEM_EXTENSION_DEFINES,
         if_true = 1,
         if_false = 0,
@@ -772,6 +881,25 @@ def _declaration_checks(version):
 
 def _compiler_checks():
     return [
+        checks.AC_TRY_LINK(
+            name = "ac_cv_gcc_asm_for_x64",
+            define = "HAVE_GCC_ASM_FOR_X64",
+            code = utils.AC_LANG_PROGRAM([], '__asm__ __volatile__ ("movq %rcx, %rax");'),
+            if_false = None,
+        ),
+        checks.AC_TRY_LINK(
+            name = "ac_cv_gcc_asm_for_x87",
+            define = "HAVE_GCC_ASM_FOR_X87",
+            code = utils.AC_LANG_PROGRAM(
+                [],
+                [
+                    "unsigned short control_word;",
+                    '__asm__ __volatile__ ("fnstcw %0" : "=m" (control_word));',
+                    '__asm__ __volatile__ ("fldcw %0" : : "m" (control_word));',
+                ],
+            ),
+            if_false = None,
+        ),
         checks.AC_TRY_COMPILE(
             name = "ac_cv_computed_gotos",
             define = "HAVE_COMPUTED_GOTOS",
@@ -959,12 +1087,6 @@ def _capability_checks(version):
             if_true = 1,
             if_false = None,
         ),
-        checks.AC_DEFINE(
-            "HAVE_TZNAME",
-            condition = "HAVE_DECL_TZNAME",
-            if_true = 1,
-            if_false = None,
-        ),
         checks.AC_TRY_COMPILE(
             name = "ac_cv_can_raw_fd_frames",
             define = "HAVE_LINUX_CAN_RAW_FD_FRAMES",
@@ -1103,8 +1225,7 @@ def _member_checks():
     ]
 
 def _darwin_platform_checks(version, support_tier):
-    return _common_fixed_defines() + [
-        checks.AC_FAIL("_GNU_SOURCE"),
+    return _common_fixed_defines(version) + [
         checks.AC_FAIL("_POSIX_C_SOURCE"),
         checks.AC_FAIL("_XOPEN_SOURCE"),
         checks.AC_FAIL("_XOPEN_SOURCE_EXTENDED"),
@@ -1115,28 +1236,18 @@ def _darwin_platform_checks(version, support_tier):
         checks.AC_DEFINE("PY_SUPPORT_TIER", support_tier),
         checks.AC_DEFINE("THREAD_STACK_SIZE", "0x1000000"),
         checks.AC_DEFINE("WITH_DYLD", 1),
-    ] + ([checks.AC_DEFINE("HAVE_STDARG_PROTOTYPES", 1)] if version == "3.11" else []) + _dynamic_loading_checks([]) + _posix_shmem_checks([]) + _pty_checks("util.h", "util.h", []) + _darwin_filesystem_checks() + _darwin_library_checks()
+    ] + ([checks.AC_DEFINE("HAVE_STDARG_PROTOTYPES", 1)] if version == "3.11" else []) + ([checks.AC_DEFINE("_PYTHREAD_NAME_MAXLEN", 63)] if version == "3.14" else []) + _dynamic_loading_checks(version, []) + _posix_shmem_checks([]) + _pty_checks("util.h", "util.h", []) + _thread_name_checks(version, []) + _darwin_filesystem_checks() + _darwin_library_checks()
 
 def _linux_platform_checks(version):
-    return _common_fixed_defines() + [
-        checks.AC_DEFINE("_GNU_SOURCE", 1),
-        checks.AC_DEFINE("HAVE_BZLIB_H", 1),
+    return _common_fixed_defines(version) + [
         checks.AC_DEFINE("HAVE_DEV_PTMX", 1),
-        checks.AC_DEFINE("HAVE_FFI_CLOSURE_ALLOC", 1),
-        checks.AC_DEFINE("HAVE_FFI_PREP_CIF_VAR", 1),
-        checks.AC_DEFINE("HAVE_FFI_PREP_CLOSURE_LOC", 1),
-        checks.AC_DEFINE("HAVE_LZMA_H", 1),
-        checks.AC_DEFINE("HAVE_ZLIB_COPY", 1),
-        checks.AC_DEFINE("HAVE_ZLIB_H", 1),
         checks.AC_DEFINE("HAVE_WORKING_TZSET", 1),
         checks.AC_DEFINE("PTHREAD_SYSTEM_SCHED_SUPPORTED", 1),
-        checks.AC_DEFINE("PY_SSL_DEFAULT_CIPHERS", 1),
-        checks.AC_DEFINE("PY_SQLITE_HAVE_SERIALIZE", 1),
         checks.AC_DEFINE("PY_SUPPORT_TIER", 2),
         checks.AC_DEFINE("_POSIX_C_SOURCE", "200809L"),
         checks.AC_DEFINE("_XOPEN_SOURCE", 700),
         checks.AC_DEFINE("_XOPEN_SOURCE_EXTENDED", 1),
-    ] + ([checks.AC_DEFINE("HAVE_STDARG_PROTOTYPES", 1)] if version == "3.11" else []) + _dynamic_loading_checks(["-ldl"]) + _posix_shmem_checks(["-lrt"]) + _pty_checks("pty.h", "utmp.h", ["-lutil"]) + _linux_filesystem_checks() + _linux_library_checks()
+    ] + ([checks.AC_DEFINE("HAVE_STDARG_PROTOTYPES", 1)] if version == "3.11" else []) + ([checks.AC_DEFINE("_PYTHREAD_NAME_MAXLEN", 15)] if version == "3.14" else []) + _dynamic_loading_checks(version, ["-ldl"]) + _posix_shmem_checks(["-lrt"]) + _pty_checks("pty.h", "utmp.h", ["-lutil"]) + _thread_name_checks(version, ["-lpthread"]) + _linux_filesystem_checks() + _linux_library_checks()
 
 def pyconfig(name, version):
     """Generates pyconfig.h with checks executed by the selected C toolchain.
@@ -1219,10 +1330,27 @@ def pyconfig(name, version):
         checks.AC_CHECK_TYPE("__uint128_t", define = "HAVE_GCC_UINT128_T"),
     ]
 
-    headers = _HEADERS + (_HEADERS_3_12 if version in ["3.11", "3.12"] else _HEADERS_3_13)
+    headers = _HEADERS + (_HEADERS_3_11_12 if version in ["3.11", "3.12"] else _HEADERS_3_13)
+    if version == "3.11":
+        headers += _HEADERS_3_11
+    elif version == "3.14":
+        headers += _HEADERS_3_14
+
     functions = _FUNCTIONS + (_FUNCTIONS_3_13 if version in ["3.13", "3.14"] else [])
+    if version == "3.11":
+        functions.append("ttyname")
     version_checks = []
-    if version in ["3.13", "3.14"]:
+    if version == "3.11":
+        version_checks += [
+            checks.AC_DEFINE(
+                "TIME_WITH_SYS_TIME",
+                condition = "HAVE_SYS_TIME_H",
+                if_true = 1,
+                if_false = None,
+            ),
+            checks.AC_DEFINE("PY_FORMAT_SIZE_T", '"z"'),
+        ]
+    elif version in ["3.13", "3.14"]:
         version_checks.append(checks.AC_DEFINE(
             "WITH_MIMALLOC",
             condition = "HAVE_STD_ATOMIC",

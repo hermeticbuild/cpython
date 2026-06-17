@@ -62,11 +62,15 @@ and starting a child interpreter with `subprocess`.
 `configure.ac` files, `pyconfig.h.in` files, generated `pyconfig.h` files, and
 `rules_cc_autoconf` manifests. It does not execute `configure`. The generated
 [`docs/configure-check-audit.md`](docs/configure-check-audit.md) records every
-CPython 3.12 and 3.13 template symbol for Linux arm64 and Darwin arm64. The
-classifications and configure decisions that do not emit template symbols are
-stored in
+CPython 3.11, 3.12, 3.13, and 3.14 template symbol for Linux arm64, Linux
+x86_64, Darwin arm64, and Darwin x86_64. A probe classification requires a
+`rules_cc_autoconf` producer in every generated configuration where the symbol
+exists. The classifications and configure decisions that do not emit template
+symbols are stored in
 [`tools/configure_check_dispositions.json`](tools/configure_check_dispositions.json).
 
-Run `tools/configure_checklist.py --help` for the required input paths. Use
-`--check --require-classified` in validation so a new template symbol must have
-a `rules_cc_autoconf` producer or an explicit reviewed disposition.
+Run `tools/configure_check_audit.sh` to rebuild all 16 generated configurations
+and update the audit. CI runs `tools/configure_check_audit.sh --check`. The
+`--require-classified` check requires the complete 16-configuration matrix,
+validates reviewed expected values, and requires every new template symbol to
+have a `rules_cc_autoconf` producer or an explicit reviewed disposition.

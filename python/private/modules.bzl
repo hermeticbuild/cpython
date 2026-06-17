@@ -541,9 +541,16 @@ def cpython_static_module_manifest(version):
         if module.name in names:
             fail("Duplicate CPython {} module {}".format(version, repr(module.name)))
         names[module.name] = True
+        version_copts = []
+        if version == "3.11" and module.name == "_ctypes":
+            version_copts = [
+                "-DHAVE_FFI_CLOSURE_ALLOC=1",
+                "-DHAVE_FFI_PREP_CIF_VAR=1",
+                "-DHAVE_FFI_PREP_CLOSURE_LOC=1",
+            ]
         result.append(struct(
             category = module.category,
-            copts = ["-DPy_BUILD_CORE_BUILTIN=1"] + module.copts,
+            copts = ["-DPy_BUILD_CORE_BUILTIN=1"] + version_copts + module.copts,
             deps = module.deps,
             includes = module.includes,
             init_symbol = module.init_symbol,
@@ -712,6 +719,25 @@ def declare_cpython_static_modules(
     if visibility != None:
         target_kwargs["visibility"] = visibility
 
+    linux_setting = "{}_linux".format(name)
+    darwin_setting = "{}_darwin".format(name)
+    windows_setting = "{}_windows".format(name)
+    native.config_setting(
+        name = linux_setting,
+        constraint_values = ["@platforms//os:linux"],
+        visibility = ["//visibility:private"],
+    )
+    native.config_setting(
+        name = darwin_setting,
+        constraint_values = ["@platforms//os:macos"],
+        visibility = ["//visibility:private"],
+    )
+    native.config_setting(
+        name = windows_setting,
+        constraint_values = ["@platforms//os:windows"],
+        visibility = ["//visibility:private"],
+    )
+
     for module in modules:
         label = selected_libraries[module.name]
         generated_module_libraries[module.name] = label
@@ -737,6 +763,12 @@ def declare_cpython_static_modules(
             target_compatible_with = ["@platforms//os:linux"]
         elif module.platform == "darwin":
             target_compatible_with = ["@platforms//os:macos"]
+        elif module.platform == "posix":
+            target_compatible_with = select({
+                ":{}".format(linux_setting): [],
+                ":{}".format(darwin_setting): [],
+                "//conditions:default": ["@platforms//:incompatible"],
+            })
         elif module.platform == "windows":
             target_compatible_with = ["@platforms//os:windows"]
 
@@ -761,25 +793,6 @@ def declare_cpython_static_modules(
             windows_labels.append(label)
         else:
             common_labels.append(label)
-
-    linux_setting = "{}_linux".format(name)
-    darwin_setting = "{}_darwin".format(name)
-    windows_setting = "{}_windows".format(name)
-    native.config_setting(
-        name = linux_setting,
-        constraint_values = ["@platforms//os:linux"],
-        visibility = ["//visibility:private"],
-    )
-    native.config_setting(
-        name = darwin_setting,
-        constraint_values = ["@platforms//os:macos"],
-        visibility = ["//visibility:private"],
-    )
-    native.config_setting(
-        name = windows_setting,
-        constraint_values = ["@platforms//os:windows"],
-        visibility = ["//visibility:private"],
-    )
 
     registry_source_target = "{}_inittab_source".format(name)
     registry_source_file = "{}_inittab.c".format(name)
