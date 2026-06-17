@@ -3,7 +3,7 @@ exports_files([
     "libmpdec-clang-cl.patch",
     "multiprocessing-semaphore-value-type.patch",
     "pyconfig-clang-cl.patch",
-    "test-ssl-wrong-cert-oserror.patch",
+    "test-ssl-tls-rejection-oserror.patch",
     "timeval-clang-cl.patch",
     "tracemalloc-clang-cl-pack.patch",
     "winapi-previous-token-size.patch",

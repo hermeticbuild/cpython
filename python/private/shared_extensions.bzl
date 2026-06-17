@@ -1,9 +1,32 @@
 """Shared CPython extensions required by the test runtimes."""
 
-load("@cpython//python/private:modules.bzl", "testcapi_sources")
+load("@cpython//python/private:modules.bzl", "ctypes_sources", "testcapi_sources")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
 _COMMON_EXTENSIONS = {
+    # PC/dl_nt.c and Modules/_ctypes/callbacks.c both define DllMain.
+    # CPython PCbuild places them in pythonXY.dll and _ctypes.pyd, respectively.
+    "_ctypes": {
+        "core_module": False,
+        "deps": ["@cpython_libffi//:libffi"],
+        "local_defines_by_version": {
+            "3.11": [
+                "HAVE_FFI_CLOSURE_ALLOC=1",
+                "HAVE_FFI_PREP_CIF_VAR=1",
+                "HAVE_FFI_PREP_CLOSURE_LOC=1",
+            ],
+        },
+        "posix": False,
+        "srcs": ["Modules/" + source for source in ctypes_sources()],
+        "windows_linkopts": [
+            "/EXPORT:DllGetClassObject,PRIVATE",
+            "/EXPORT:DllCanUnloadNow,PRIVATE",
+            "advapi32.lib",
+            "ole32.lib",
+            "oleaut32.lib",
+            "shell32.lib",
+        ],
+    },
     "_ctypes_test": {
         "core_module": False,
         "srcs": ["Modules/_ctypes/_ctypes_test.c"],
@@ -24,6 +47,14 @@ _COMMON_EXTENSIONS = {
         "core_module": False,
         "srcs": ["Modules/xxlimited_35.c"],
     },
+}
+
+_TESTCLINIC_LIMITED_EXTENSION = {
+    # _testclinic_limited.c undefines Py_BUILD_CORE and links through
+    # pythonXY.lib. CPython PCbuild therefore builds it as a .pyd.
+    "core_module": False,
+    "posix": False,
+    "srcs": ["Modules/_testclinic_limited.c"],
 }
 
 _VERSION_EXTENSIONS = {
@@ -53,6 +84,7 @@ _VERSION_EXTENSIONS = {
             "srcs": ["Modules/_testexternalinspection.c"],
             "windows": False,
         },
+        "_testclinic_limited": _TESTCLINIC_LIMITED_EXTENSION,
         "_testsinglephase": {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],
@@ -63,6 +95,7 @@ _VERSION_EXTENSIONS = {
             "core_module": True,
             "srcs": ["Modules/" + source for source in testcapi_sources("3.14")],
         },
+        "_testclinic_limited": _TESTCLINIC_LIMITED_EXTENSION,
         "_testsinglephase": {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],
@@ -81,7 +114,14 @@ _WINDOWS_COMPATIBILITY = select({
     "//conditions:default": ["@platforms//:incompatible"],
 })
 
-def _shared_extension(name, srcs, headers, core_module, target_compatible_with):
+def _shared_extension(
+        name,
+        srcs,
+        headers,
+        core_module,
+        target_compatible_with,
+        deps = [],
+        local_defines = []):
     # The shared extension retains undefined Python API symbols. The Python
     # interpreter resolves those symbols when it loads the extension.
     cc_binary(
@@ -91,13 +131,13 @@ def _shared_extension(name, srcs, headers, core_module, target_compatible_with):
             "-std=c11",
             "-fwrapv",
         ],
-        deps = [headers],
+        deps = [headers] + deps,
         linkshared = True,
         linkopts = select({
             "@platforms//os:macos": ["-Wl,-undefined,dynamic_lookup"],
             "//conditions:default": [],
         }),
-        local_defines = ["Py_BUILD_CORE_MODULE=1"] if core_module else [],
+        local_defines = (["Py_BUILD_CORE_MODULE=1"] if core_module else []) + local_defines,
         target_compatible_with = target_compatible_with,
         visibility = ["//visibility:public"],
     )
@@ -111,9 +151,12 @@ def _windows_extension(
         python_import_library,
         stable_abi,
         stable_import,
-        version_abi):
-    deps = [headers]
-    linkopts = ["/NODEFAULTLIB:" + python_import_library]
+        version_abi,
+        extra_deps = [],
+        extra_linkopts = [],
+        extra_local_defines = []):
+    deps = [headers] + extra_deps
+    linkopts = ["/NODEFAULTLIB:" + python_import_library] + extra_linkopts
     if version_abi:
         deps.append(python_import)
     if stable_abi:
@@ -132,7 +175,7 @@ def _windows_extension(
         features = ["no_windows_export_all_symbols"],
         linkopts = linkopts,
         linkshared = True,
-        local_defines = ["Py_BUILD_CORE_MODULE=1"] if core_module else [],
+        local_defines = (["Py_BUILD_CORE_MODULE=1"] if core_module else []) + extra_local_defines,
         target_compatible_with = _WINDOWS_COMPATIBILITY,
         visibility = ["//visibility:public"],
     )
@@ -167,15 +210,19 @@ def shared_extensions(
     windows_outputs = []
     for module_name in sorted(extensions):
         extension = extensions[module_name]
-        output = module_name + ".so"
-        _shared_extension(
-            name = output,
-            srcs = extension["srcs"],
-            headers = headers,
-            core_module = extension["core_module"],
-            target_compatible_with = _POSIX_COMPATIBILITY,
-        )
-        common_outputs.append(":" + output)
+        local_defines = extension.get("local_defines_by_version", {}).get(version, [])
+        if extension.get("posix", True):
+            output = module_name + ".so"
+            _shared_extension(
+                name = output,
+                srcs = extension["srcs"],
+                headers = headers,
+                core_module = extension["core_module"],
+                deps = extension.get("deps", []),
+                local_defines = local_defines,
+                target_compatible_with = _POSIX_COMPATIBILITY,
+            )
+            common_outputs.append(":" + output)
 
         if extension.get("windows", True):
             windows_output = module_name + ".pyd"
@@ -191,6 +238,9 @@ def shared_extensions(
                 stable_abi = stable_abi,
                 stable_import = stable_import,
                 version_abi = version_abi,
+                extra_deps = extension.get("deps", []),
+                extra_linkopts = extension.get("windows_linkopts", []),
+                extra_local_defines = local_defines,
             )
             windows_outputs.append(":" + windows_output)
 

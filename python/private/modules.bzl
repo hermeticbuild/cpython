@@ -93,6 +93,18 @@ _BOOTSTRAP_SUFFIX = [
     _module("pwd", ["pwdmodule.c"], "bootstrap", platform = "posix"),
 ]
 
+_CTYPES_SOURCES = [
+    "_ctypes/_ctypes.c",
+    "_ctypes/callbacks.c",
+    "_ctypes/callproc.c",
+    "_ctypes/stgdict.c",
+    "_ctypes/cfield.c",
+]
+
+def ctypes_sources():
+    """Returns the _ctypes source paths."""
+    return _CTYPES_SOURCES
+
 _STDLIB_COMMON = [
     _module("array", ["arraymodule.c"], "stdlib"),
     _module(
@@ -105,15 +117,10 @@ _STDLIB_COMMON = [
     _module("_csv", ["_csv.c"], "stdlib"),
     _module(
         "_ctypes",
-        [
-            "_ctypes/_ctypes.c",
-            "_ctypes/callbacks.c",
-            "_ctypes/callproc.c",
-            "_ctypes/stgdict.c",
-            "_ctypes/cfield.c",
-        ],
+        ctypes_sources(),
         "stdlib",
         deps = ["@cpython_libffi//:libffi"],
+        platform = "posix",
     ),
     _module("_heapq", ["_heapqmodule.c"], "stdlib"),
     _module("_json", ["_json.c"], "stdlib"),
@@ -520,7 +527,12 @@ def _test_3_13_14(version):
             "_testlimitedcapi/version.c",
         ] if version == "3.14" else []), "test"),
         _module("_testclinic", ["_testclinic.c"], "test"),
-        _module("_testclinic_limited", ["_testclinic_limited.c"], "test"),
+        _module(
+            "_testclinic_limited",
+            ["_testclinic_limited.c"],
+            "test",
+            platform = "posix",
+        ),
     ]
 
 def _bootstrap_modules(version):
