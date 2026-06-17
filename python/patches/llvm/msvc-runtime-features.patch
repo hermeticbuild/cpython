@@ -1,0 +1,13 @@
+diff --git a/toolchain/cc_toolchain.bzl b/toolchain/cc_toolchain.bzl
+index 6e2c80b..cb1fe8f 100644
+--- a/toolchain/cc_toolchain.bzl
++++ b/toolchain/cc_toolchain.bzl
+@@ -15,6 +15,8 @@ def cc_toolchain(name, tool_map, module_map = None, extra_args = []):
+                 "@llvm//toolchain/features:targets_windows",
+                 "@llvm//toolchain/features:supports_interface_shared_libraries",
+                 "@llvm//toolchain/features:has_configured_linker_path",
++                "@rules_cc//cc/toolchains/args/windows:dynamic_link_msvcrt_feature",
++                "@rules_cc//cc/toolchains/args/windows:static_link_msvcrt_feature",
+                 "@llvm//toolchain/features:msvc_implib_flags",
+             ],
+             "//conditions:default": [

@@ -1,1 +1,4 @@
-exports_files(["msvc-warning-level.patch"])
+exports_files([
+    "msvc-runtime-features.patch",
+    "msvc-warning-level.patch",
+])
