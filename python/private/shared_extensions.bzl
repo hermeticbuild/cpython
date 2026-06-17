@@ -21,10 +21,6 @@ _COMMON_EXTENSIONS = {
         "windows_linkopts": [
             "/EXPORT:DllGetClassObject,PRIVATE",
             "/EXPORT:DllCanUnloadNow,PRIVATE",
-            "advapi32.lib",
-            "ole32.lib",
-            "oleaut32.lib",
-            "shell32.lib",
         ],
     },
     "_ctypes_test": {
@@ -114,6 +110,13 @@ _WINDOWS_COMPATIBILITY = select({
     "//conditions:default": ["@platforms//:incompatible"],
 })
 
+_WINDOWS_SYSTEM_LINKOPTS = [
+    "advapi32.lib",
+    "ole32.lib",
+    "oleaut32.lib",
+    "shell32.lib",
+]
+
 def _shared_extension(
         name,
         srcs,
@@ -156,7 +159,11 @@ def _windows_extension(
         extra_linkopts = [],
         extra_local_defines = []):
     deps = [headers] + extra_deps
-    linkopts = ["/NODEFAULTLIB:" + python_import_library] + extra_linkopts
+    linkopts = (
+        ["/NODEFAULTLIB:" + python_import_library] +
+        _WINDOWS_SYSTEM_LINKOPTS +
+        extra_linkopts
+    )
     if version_abi:
         deps.append(python_import)
     if stable_abi:

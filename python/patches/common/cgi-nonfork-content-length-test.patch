@@ -1,0 +1,31 @@
+--- a/Lib/test/test_httpservers.py
++++ b/Lib/test/test_httpservers.py
+@@ -899,11 +899,20 @@
+             self.assertEqual(res.read(), b'%d %d' % (size, size) + self.linesep)
+-
++
+     def test_large_content_length_truncated(self):
+-        with support.swap_attr(self.request_handler, 'timeout', 0.001):
+-            for w in range(18, 65):
+-                size = 1 << w
+-                headers = {'Content-Length' : str(size)}
+-                res = self.request('/cgi-bin/file1.py', 'POST', b'x', headers)
+-                self.assertEqual(res.read(), b'Hello World' + self.linesep)
++        with support.swap_attr(self.request_handler, 'have_fork', False):
++            with support.swap_attr(self.request_handler, 'timeout', 0.001):
++                for w in range(18, 65):
++                    size = 1 << w
++                    request = (
++                        b'POST /cgi-bin/file1.py HTTP/1.0\r\n'
++                        b'Content-Length: ' + str(size).encode('ascii') +
++                        b'\r\n\r\nx'
++                    )
++                    with socket.create_connection((self.HOST, self.PORT)) as sock:
++                        sock.sendall(request)
++                        res = http.client.HTTPResponse(sock, method='POST')
++                        res.begin()
++                        self.assertEqual(
++                            res.read(), b'Hello World' + self.linesep)
+-
++
+     def test_invaliduri(self):

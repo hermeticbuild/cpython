@@ -18,24 +18,31 @@ _PATCHES = {
         Label("//python/patches/3.11:winapi-previous-token-size.patch"),
         Label("//python/patches/3.11:wincrypt-header.patch"),
         Label("//python/patches/common:atomic-clang-cl-casts.patch"),
+        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
         Label("//python/patches/common:static-windows-winver.patch"),
         Label("//python/patches/common:tarfile-mode-capabilities.patch"),
     ],
     "3.12": [
         Label("//python/patches/3.12:getpath-generated-header.patch"),
+        Label("//python/patches/3.12:multiprocessing-rlock-repr-race.patch"),
         Label("//python/patches/3.12:multiprocessing-semaphore-value-type.patch"),
         Label("//python/patches/3.12:test-ssl-tls-rejection-oserror.patch"),
         Label("//python/patches/3.12:winapi-previous-token-size.patch"),
         Label("//python/patches/common:atomic-clang-cl-casts.patch"),
+        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
         Label("//python/patches/common:static-windows-winver.patch"),
         Label("//python/patches/common:tarfile-mode-capabilities.patch"),
     ],
     "3.13": [
         Label("//python/patches/3.13:multiprocessing-semaphore-value-type.patch"),
         Label("//python/patches/3.13:winapi-previous-token-size.patch"),
+        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
         Label("//python/patches/common:static-windows-winver.patch"),
     ],
-    "3.14": [Label("//python/patches/common:static-windows-winver.patch")],
+    "3.14": [
+        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
+        Label("//python/patches/common:static-windows-winver.patch"),
+    ],
 }
 
 def _python_impl(module_ctx):
