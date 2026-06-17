@@ -1,12 +1,12 @@
 load("@bazel_lib//lib:copy_file.bzl", "copy_file")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@bazel_lib//lib:run_binary.bzl", "run_binary")
-load("@cpython//python/private:build_details.bzl", "cpython_build_details")
+load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
 load("@cpython//python/private:pyconfig.bzl", "pyconfig")
-load("@cpython//python/private:shared_extensions.bzl", "shared_test_extensions")
+load("@cpython//python/private:shared_extensions.bzl", "shared_extensions")
 load("@cpython//python/private:test_programs.bzl", "native_test_programs")
 load("@cpython//python/private:upstream_tests.bzl", "upstream_regrtests")
 load("@cpython//python/private/sysconfig:sysconfig.bzl", "cpython_sysconfig", "merge_sysconfig_build_vars")
@@ -161,6 +161,9 @@ cc_library(
 )
 
 SYSCONFIG_PREFIX = "/python"
+
+# Keep this equal to the pinned LLVM toolchain's -mmacosx-version-min value.
+MACOSX_DEPLOYMENT_TARGET = "14.0"
 SYSCONFIG_LIBDEST = "{}/lib/python{}".format(SYSCONFIG_PREFIX, PYTHON_VERSION)
 SYSCONFIG_INCLUDEPY = "{}/include/python{}".format(SYSCONFIG_PREFIX, PYTHON_VERSION)
 SYSCONFIG_COMMON_BUILD_VARS = {
@@ -211,6 +214,7 @@ cpython_sysconfig(
             "LIBPL": "{}/config-{}-darwin".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
             "LIBS": "-lm",
             "LINKFORSHARED": "-Wl,-stack_size,1000000 -framework CoreFoundation",
+            "MACOSX_DEPLOYMENT_TARGET": MACOSX_DEPLOYMENT_TARGET,
             "MACHDEP": "darwin",
             "MULTIARCH": "darwin",
             "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"darwin\\\"",
@@ -223,6 +227,7 @@ cpython_sysconfig(
             "LIBPL": "{}/config-{}-darwin".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
             "LIBS": "-lm",
             "LINKFORSHARED": "-Wl,-stack_size,1000000 -framework CoreFoundation",
+            "MACOSX_DEPLOYMENT_TARGET": MACOSX_DEPLOYMENT_TARGET,
             "MACHDEP": "darwin",
             "MULTIARCH": "darwin",
             "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"darwin\\\"",
@@ -610,7 +615,7 @@ DEEPFREEZE_SRCS = deepfreeze_sources(
     version = PYTHON_VERSION,
 )
 
-SHARED_TEST_EXTENSIONS = shared_test_extensions(PYTHON_VERSION)
+SHARED_EXTENSIONS = shared_extensions(PYTHON_VERSION, PYTHON_SOABI)
 
 cc_library(
     name = "python_frozen",
@@ -642,10 +647,10 @@ NATIVE_TEST_PROGRAMS = native_test_programs(
 copy_to_directory(
     name = "runtime_stdlib",
     srcs = glob(["Lib/**"]) + [":sysconfig_data"] + select({
-        ":darwin_arm64": SHARED_TEST_EXTENSIONS,
-        ":darwin_x86_64": SHARED_TEST_EXTENSIONS,
-        ":linux_arm64": SHARED_TEST_EXTENSIONS,
-        ":linux_x86_64": SHARED_TEST_EXTENSIONS,
+        ":darwin_arm64": SHARED_EXTENSIONS.darwin_arm64,
+        ":darwin_x86_64": SHARED_EXTENSIONS.darwin_x86_64,
+        ":linux_arm64": SHARED_EXTENSIONS.linux_arm64,
+        ":linux_x86_64": SHARED_EXTENSIONS.linux_x86_64,
         ":windows_arm64": [],
         ":windows_x86_64": [],
     }),
@@ -702,7 +707,7 @@ PYTHON_RUNTIME_DEPS = [
     ":python_runtime_core",
 ]
 
-BUILD_DETAILS = cpython_build_details(
+BUILD_METADATA = cpython_build_metadata(
     version = PYTHON_VERSION,
     core_copts = CORE_COPTS,
     linkopts = PYTHON_LINKOPTS,
@@ -714,7 +719,7 @@ cc_binary(
     name = "runtime/python",
     srcs = ["Programs/python.c"],
     copts = CORE_COPTS,
-    data = PYTHON_RUNTIME_DATA + BUILD_DETAILS.runtime_data,
+    data = PYTHON_RUNTIME_DATA + BUILD_METADATA.runtime_data,
     deps = PYTHON_RUNTIME_DEPS,
     linkopts = PYTHON_LINKOPTS,
 )
@@ -775,7 +780,7 @@ copy_to_directory(
 
 filegroup(
     name = "source_build_test_data",
-    srcs = BUILD_DETAILS.test_data + [
+    srcs = BUILD_METADATA.test_data + [
         ":runtime_test_doc",
         ":runtime_test_makefile_pre_in",
         ":runtime_test_objects",

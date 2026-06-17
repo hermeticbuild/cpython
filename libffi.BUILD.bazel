@@ -67,7 +67,7 @@ expand_template(
     substitutions = select({
         ":darwin_arm64": {
             "@FFI_EXEC_TRAMPOLINE_TABLE@": "1",
-            "@HAVE_LONG_DOUBLE@": "1",
+            "@HAVE_LONG_DOUBLE@": "0",
             "@TARGET@": "AARCH64",
             "@VERSION@": "3.4.7",
         },

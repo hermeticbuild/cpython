@@ -1,9 +1,10 @@
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
 exports_files([
-    "build_details.bzl",
+    "build_metadata.bzl",
     "bundled_libraries.bzl",
     "deepfreeze.bzl",
+    "generate_sysconfig_json.py",
     "modules.bzl",
     "pyconfig.bzl",
     "pyconfig_contract.c",
@@ -17,8 +18,8 @@ exports_files([
 ])
 
 sh_binary(
-    name = "generate_build_details",
-    srcs = ["generate_build_details.sh"],
+    name = "run_target_python",
+    srcs = ["run_target_python.sh"],
     visibility = ["//visibility:public"],
 )
 

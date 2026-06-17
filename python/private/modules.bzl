@@ -101,7 +101,6 @@ _STDLIB_COMMON = [
         "stdlib",
         deps = ["@bzip2//:bz2"],
     ),
-    _module("_asyncio", ["_asynciomodule.c"], "stdlib"),
     _module("_bisect", ["_bisectmodule.c"], "stdlib"),
     _module("_csv", ["_csv.c"], "stdlib"),
     _module(
@@ -170,6 +169,7 @@ _STDLIB_COMMON = [
 ]
 
 _STDLIB_BEFORE_3_14 = [
+    _module("_asyncio", ["_asynciomodule.c"], "stdlib"),
     _module("_contextvars", ["_contextvarsmodule.c"], "stdlib"),
     _module("_opcode", ["_opcode.c"], "stdlib"),
     _module("_datetime", ["_datetimemodule.c"], "stdlib"),
@@ -193,6 +193,7 @@ _STDLIB_3_13 = [
 ]
 
 _STDLIB_3_14 = [
+    _module("_asyncio", ["_asynciomodule.c"], "stdlib", platform = "windows"),
     _module("_contextvars", ["_contextvars.c"], "stdlib", source_root = "Python"),
     _module("_interpreters", ["_interpretersmodule.c"], "stdlib"),
     _module("_interpchannels", ["_interpchannelsmodule.c"], "stdlib"),
@@ -453,6 +454,20 @@ _TESTCAPI_3_13_SOURCES = [
     "_testcapi/monitoring.c",
 ]
 
+def testcapi_sources(version):
+    """Returns the CPython 3.13 or 3.14 _testcapi source paths."""
+    if version == "3.13":
+        return _TESTCAPI_3_13_SOURCES
+    if version == "3.14":
+        return _TESTCAPI_3_13_SOURCES + [
+            "_testcapi/config.c",
+            "_testcapi/import.c",
+            "_testcapi/frame.c",
+            "_testcapi/type.c",
+            "_testcapi/function.c",
+        ]
+    fail("testcapi_sources does not support CPython %s" % version)
+
 def _test_3_13_14(version):
     return [
         _module("xxsubtype", ["xxsubtype.c"], "test"),
@@ -468,13 +483,7 @@ def _test_3_13_14(version):
             "_testinternalcapi/set.c",
             "_testinternalcapi/test_critical_sections.c",
         ] + (["_testinternalcapi/complex.c"] if version == "3.14" else []), "test"),
-        _module("_testcapi", _TESTCAPI_3_13_SOURCES + ([
-            "_testcapi/config.c",
-            "_testcapi/import.c",
-            "_testcapi/frame.c",
-            "_testcapi/type.c",
-            "_testcapi/function.c",
-        ] if version == "3.14" else []), "test"),
+        _module("_testcapi", testcapi_sources(version), "test", platform = "windows"),
         _module("_testlimitedcapi", [
             "_testlimitedcapi.c",
             "_testlimitedcapi/abstract.c",

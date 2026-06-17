@@ -1,5 +1,6 @@
-"""Shared CPython test extensions required by Modules/Setup.stdlib.in."""
+"""Shared CPython extensions required by the POSIX test runtimes."""
 
+load("@cpython//python/private:modules.bzl", "testcapi_sources")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
 _COMMON_EXTENSIONS = {
@@ -34,16 +35,24 @@ _VERSION_EXTENSIONS = {
         },
     },
     "3.13": {
-        "_testsinglephase": {
+        "_testcapi": {
             "core_module": True,
-            "srcs": ["Modules/_testsinglephase.c"],
+            "srcs": ["Modules/" + source for source in testcapi_sources("3.13")],
         },
         "_testexternalinspection": {
             "core_module": True,
             "srcs": ["Modules/_testexternalinspection.c"],
         },
+        "_testsinglephase": {
+            "core_module": True,
+            "srcs": ["Modules/_testsinglephase.c"],
+        },
     },
     "3.14": {
+        "_testcapi": {
+            "core_module": True,
+            "srcs": ["Modules/" + source for source in testcapi_sources("3.14")],
+        },
         "_testsinglephase": {
             "core_module": True,
             "srcs": ["Modules/_testsinglephase.c"],
@@ -51,55 +60,95 @@ _VERSION_EXTENSIONS = {
     },
 }
 
-def shared_test_extensions(version, headers = ":headers"):
-    """Defines POSIX shared test extensions and returns their target labels.
+_POSIX_COMPATIBILITY = select({
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
 
-    The xxlimited sources define their own Py_LIMITED_API values. Python 3.13's
-    _testimportmultiple.c also defines Py_LIMITED_API. The other public
-    extension sources compile without Py_BUILD_CORE_MODULE.
+def _shared_extension(name, srcs, headers, core_module, target_compatible_with):
+    # The shared extension retains undefined Python API symbols. The Python
+    # interpreter resolves those symbols when it loads the extension.
+    cc_binary(
+        name = name,
+        srcs = srcs,
+        copts = [
+            "-std=c11",
+            "-fwrapv",
+        ],
+        deps = [headers],
+        linkshared = True,
+        linkopts = select({
+            "@platforms//os:macos": ["-Wl,-undefined,dynamic_lookup"],
+            "//conditions:default": [],
+        }),
+        local_defines = ["Py_BUILD_CORE_MODULE=1"] if core_module else [],
+        target_compatible_with = target_compatible_with,
+        visibility = ["//visibility:public"],
+    )
 
-    Args:
-      version: Supported CPython minor version.
-      headers: cc_library target containing Python.h, pyconfig.h, internal
-        headers, and generated Clinic headers.
-
-    Returns:
-      Labels for the generated <module>.so targets, suitable for runtime data.
-    """
+def shared_extensions(version, soabi, headers = ":headers"):
+    """Defines POSIX shared extensions and returns their runtime labels."""
     if version not in _VERSION_EXTENSIONS:
-        fail("shared_test_extensions does not support CPython %s" % version)
+        fail("shared_extensions does not support CPython %s" % version)
 
     extensions = dict(_COMMON_EXTENSIONS)
     extensions.update(_VERSION_EXTENSIONS[version])
 
-    outputs = []
+    common_outputs = []
     for module_name in sorted(extensions):
         extension = extensions[module_name]
         output = module_name + ".so"
-
-        # The shared extension retains undefined Python API symbols. The Python
-        # interpreter resolves those symbols when it loads the extension.
-        cc_binary(
+        _shared_extension(
             name = output,
             srcs = extension["srcs"],
-            copts = [
-                "-std=c11",
-                "-fwrapv",
-            ],
-            deps = [headers],
-            linkshared = True,
-            linkopts = select({
-                "@platforms//os:macos": ["-Wl,-undefined,dynamic_lookup"],
-                "//conditions:default": [],
-            }),
-            local_defines = ["Py_BUILD_CORE_MODULE=1"] if extension["core_module"] else [],
-            target_compatible_with = select({
-                "@platforms//os:linux": [],
-                "@platforms//os:macos": [],
-                "//conditions:default": ["@platforms//:incompatible"],
-            }),
-            visibility = ["//visibility:public"],
+            headers = headers,
+            core_module = extension["core_module"],
+            target_compatible_with = _POSIX_COMPATIBILITY,
         )
-        outputs.append(":" + output)
+        common_outputs.append(":" + output)
 
-    return outputs
+    darwin_outputs = common_outputs
+    linux_arm64_outputs = common_outputs
+    linux_x86_64_outputs = common_outputs
+    if version == "3.14":
+        asyncio_darwin = "_asyncio.%s-darwin.so" % soabi
+        asyncio_linux_arm64 = "_asyncio.%s-aarch64-linux-gnu.so" % soabi
+        asyncio_linux_x86_64 = "_asyncio.%s-x86_64-linux-gnu.so" % soabi
+        _shared_extension(
+            name = asyncio_darwin,
+            srcs = ["Modules/_asynciomodule.c"],
+            headers = headers,
+            core_module = True,
+            target_compatible_with = ["@platforms//os:macos"],
+        )
+        _shared_extension(
+            name = asyncio_linux_arm64,
+            srcs = ["Modules/_asynciomodule.c"],
+            headers = headers,
+            core_module = True,
+            target_compatible_with = [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux",
+            ],
+        )
+        _shared_extension(
+            name = asyncio_linux_x86_64,
+            srcs = ["Modules/_asynciomodule.c"],
+            headers = headers,
+            core_module = True,
+            target_compatible_with = [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux",
+            ],
+        )
+        darwin_outputs = common_outputs + [":" + asyncio_darwin]
+        linux_arm64_outputs = common_outputs + [":" + asyncio_linux_arm64]
+        linux_x86_64_outputs = common_outputs + [":" + asyncio_linux_x86_64]
+
+    return struct(
+        darwin_arm64 = darwin_outputs,
+        darwin_x86_64 = darwin_outputs,
+        linux_arm64 = linux_arm64_outputs,
+        linux_x86_64 = linux_x86_64_outputs,
+    )
