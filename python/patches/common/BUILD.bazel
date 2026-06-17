@@ -4,5 +4,6 @@ exports_files([
     "static-windows-winver.patch",
     "tarfile-mode-capabilities.patch",
     "test-dtrace-windows.patch",
+    "venv-writable-windows-launchers.patch",
     "venv-writable-windows-scripts.patch",
 ])

@@ -1094,7 +1094,7 @@ VENV_LAUNCHER_LINKOPTS = (
 )
 
 cc_binary(
-    name = "runtime/venvlauncher",
+    name = "runtime/Lib/venv/scripts/nt/venvlauncher",
     srcs = [VENV_LAUNCHER_SOURCE],
     additional_linker_inputs = [":venvlauncher_resource"],
     deps = [":headers"],
@@ -1108,7 +1108,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "runtime/venvwlauncher",
+    name = "runtime/Lib/venv/scripts/nt/venvwlauncher",
     srcs = [VENV_LAUNCHER_SOURCE],
     additional_linker_inputs = [":venvwlauncher_resource"],
     deps = [":headers"],
@@ -1233,18 +1233,18 @@ PYTHON_RUNTIME_DATA = [
         ":python3_import_library",
         ":python_dll",
         ":python_import_library",
+        ":runtime/Lib/venv/scripts/nt/venvlauncher",
+        ":runtime/Lib/venv/scripts/nt/venvwlauncher",
         ":runtime/pythonw",
-        ":runtime/venvlauncher",
-        ":runtime/venvwlauncher",
     ],
     ":windows_x86_64": [
         ":python3_dll",
         ":python3_import_library",
         ":python_dll",
         ":python_import_library",
+        ":runtime/Lib/venv/scripts/nt/venvlauncher",
+        ":runtime/Lib/venv/scripts/nt/venvwlauncher",
         ":runtime/pythonw",
-        ":runtime/venvlauncher",
-        ":runtime/venvwlauncher",
     ],
     "//conditions:default": [
         ":runtime_makefile",

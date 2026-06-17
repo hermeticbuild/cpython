@@ -38,15 +38,18 @@ _PATCHES = {
         Label("//python/patches/common:venv-writable-windows-scripts.patch"),
     ],
     "3.13": [
+        Label("//python/patches/3.13:stopwatch-perf-counter.patch"),
         Label("//python/patches/3.13:multiprocessing-semaphore-value-type.patch"),
         Label("//python/patches/3.13:winapi-previous-token-size.patch"),
         Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
         Label("//python/patches/common:static-windows-winver.patch"),
+        Label("//python/patches/common:venv-writable-windows-launchers.patch"),
         Label("//python/patches/common:venv-writable-windows-scripts.patch"),
     ],
     "3.14": [
         Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
         Label("//python/patches/common:static-windows-winver.patch"),
+        Label("//python/patches/common:venv-writable-windows-launchers.patch"),
         Label("//python/patches/common:venv-writable-windows-scripts.patch"),
     ],
 }

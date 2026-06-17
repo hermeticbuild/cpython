@@ -1,4 +1,5 @@
 exports_files([
     "multiprocessing-semaphore-value-type.patch",
+    "stopwatch-perf-counter.patch",
     "winapi-previous-token-size.patch",
 ])

@@ -1,0 +1,118 @@
+diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
+--- a/Lib/test/support/__init__.py
++++ b/Lib/test/support/__init__.py
+@@ -2586,30 +2586,30 @@ def sleeping_retry(timeout, err_msg=None, /,
+         delay = min(delay * 2, max_delay)
+ 
+ 
+-class CPUStopwatch:
++class Stopwatch:
+     """Context manager to roughly time a CPU-bound operation.
+ 
+-    Disables GC. Uses CPU time if it can (i.e. excludes sleeps & time of
+-    other processes).
++    Disables GC. Uses perf_counter, which is a clock with the highest
++    available resolution. It is chosen even though it does include
++    time elapsed during sleep and is system-wide, because the
++    resolution of process_time is too coarse on Windows and
++    process_time does not exist everywhere (for example, WASM).
+ 
+-    N.B.:
+-    - This *includes* time spent in other threads.
++    Note:
++    - This *includes* time spent in other threads/processes.
+     - Some systems only have a coarse resolution; check
+-      stopwatch.clock_info.rseolution if.
++      stopwatch.clock_info.resolution when using the results.
+ 
+     Usage:
+ 
+-    with ProcessStopwatch() as stopwatch:
++    with Stopwatch() as stopwatch:
+         ...
+     elapsed = stopwatch.seconds
+     resolution = stopwatch.clock_info.resolution
+     """
+     def __enter__(self):
+-        get_time = time.process_time
+-        clock_info = time.get_clock_info('process_time')
+-        if get_time() <= 0:  # some platforms like WASM lack process_time()
+-            get_time = time.monotonic
+-            clock_info = time.get_clock_info('monotonic')
++        get_time = time.perf_counter
++        clock_info = time.get_clock_info('perf_counter')
+         self.context = disable_gc()
+         self.context.__enter__()
+         self.get_time = get_time
+diff --git a/Lib/test/test_int.py b/Lib/test/test_int.py
+--- a/Lib/test/test_int.py
++++ b/Lib/test/test_int.py
+@@ -590,6 +590,6 @@ class IntStrDigitLimitsTests(unittest.TestCase):
+         digits = 78_268
+         with (
+                 support.adjust_int_max_str_digits(digits),
+-                support.CPUStopwatch() as sw_convert):
++                support.Stopwatch() as sw_convert):
+             huge_decimal = str(huge_int)
+         self.assertEqual(len(huge_decimal), digits)
+@@ -605,6 +605,6 @@ class IntStrDigitLimitsTests(unittest.TestCase):
+         with support.adjust_int_max_str_digits(int(.995 * digits)):
+             with (
+                     self.assertRaises(ValueError) as err,
+-                    support.CPUStopwatch() as sw_fail_huge):
++                    support.Stopwatch() as sw_fail_huge):
+                 str(huge_int)
+         self.assertIn('conversion', str(err.exception))
+@@ -615,6 +615,6 @@ class IntStrDigitLimitsTests(unittest.TestCase):
+         extra_huge_int = int(f'0x{"c"*500_000}', base=16)  # 602060 digits.
+         with (
+                 self.assertRaises(ValueError) as err,
+-                support.CPUStopwatch() as sw_fail_extra_huge):
++                support.Stopwatch() as sw_fail_extra_huge):
+             # If not limited, 8 seconds said Zen based cloud VM.
+             str(extra_huge_int)
+@@ -630,6 +630,6 @@ class IntStrDigitLimitsTests(unittest.TestCase):
+         huge = '8'*digits
+         with (
+                 support.adjust_int_max_str_digits(digits),
+-                support.CPUStopwatch() as sw_convert):
++                support.Stopwatch() as sw_convert):
+             int(huge)
+         # Ensuring that we chose a slow enough conversion to measure.
+@@ -642,6 +642,6 @@ class IntStrDigitLimitsTests(unittest.TestCase):
+         with support.adjust_int_max_str_digits(digits - 1):
+             with (
+                     self.assertRaises(ValueError) as err,
+-                    support.CPUStopwatch() as sw_fail_huge):
++                    support.Stopwatch() as sw_fail_huge):
+                 int(huge)
+         self.assertIn('conversion', str(err.exception))
+@@ -652,6 +652,6 @@ class IntStrDigitLimitsTests(unittest.TestCase):
+         extra_huge = '7'*1_200_000
+         with (
+                 self.assertRaises(ValueError) as err,
+-                support.CPUStopwatch() as sw_fail_extra_huge):
++                support.Stopwatch() as sw_fail_extra_huge):
+             # If not limited, 8 seconds in the Zen based cloud VM.
+             int(extra_huge)
+diff --git a/Lib/test/test_re.py b/Lib/test/test_re.py
+--- a/Lib/test/test_re.py
++++ b/Lib/test/test_re.py
+@@ -1,7 +1,7 @@
+ from test.support import (gc_collect, bigmemtest, _2G,
+                           cpython_only, captured_stdout,
+                           check_disallow_instantiation, is_emscripten, is_wasi,
+-                          warnings_helper, SHORT_TIMEOUT, CPUStopwatch, requires_resource)
++                          warnings_helper, SHORT_TIMEOUT, Stopwatch, requires_resource)
+ import locale
+ import re
+ import string
+@@ -2467,7 +2467,7 @@ class ReTests(unittest.TestCase):
+     @requires_resource('cpu')
+     def test_search_anchor_at_beginning(self):
+         s = 'x'*10**7
+-        with CPUStopwatch() as stopwatch:
++        with Stopwatch() as stopwatch:
+             for p in r'\Ay', r'^y':
+                 self.assertIsNone(re.search(p, s))
+                 self.assertEqual(re.split(p, s), [s])
