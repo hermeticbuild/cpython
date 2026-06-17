@@ -169,6 +169,10 @@ def bundled_libraries(
             "Modules/expat/xmltok_ns.c",
         ],
         deps = [python_headers],
+        defines = select({
+            "@platforms//os:windows": ["XML_STATIC=1"],
+            "//conditions:default": [],
+        }),
         includes = ["Modules/expat"],
         linkopts = select({
             "@platforms//os:windows": [],
@@ -184,8 +188,10 @@ def bundled_libraries(
         defines = [
             "ANSI=1",
             "CONFIG_64=1",
-            "HAVE_UINT128_T=1",
-        ],
+        ] + select({
+            "@platforms//os:windows": [],
+            "//conditions:default": ["HAVE_UINT128_T=1"],
+        }),
         deps = [python_headers],
         includes = ["Modules/_decimal/libmpdec"],
         linkopts = select({
