@@ -3,6 +3,9 @@
 load("@cpython//python/private:modules.bzl", "ctypes_sources", "testcapi_sources")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
+_VERSIONED_WINDOWS_IMPORT = "versioned"
+_STABLE_WINDOWS_IMPORT = "stable"
+
 _COMMON_EXTENSIONS = {
     # PC/dl_nt.c and Modules/_ctypes/callbacks.c both define DllMain.
     # CPython PCbuild places them in pythonXY.dll and _ctypes.pyd, respectively.
@@ -38,10 +41,12 @@ _COMMON_EXTENSIONS = {
     "xxlimited": {
         "core_module": False,
         "srcs": ["Modules/xxlimited.c"],
+        "windows_imports": [_STABLE_WINDOWS_IMPORT],
     },
     "xxlimited_35": {
         "core_module": False,
         "srcs": ["Modules/xxlimited_35.c"],
+        "windows_imports": [_STABLE_WINDOWS_IMPORT],
     },
 }
 
@@ -64,6 +69,10 @@ _VERSION_EXTENSIONS = {
         "_testcapi": {
             "core_module": True,
             "srcs": ["Modules/" + source for source in testcapi_sources("3.12")],
+            "windows_imports": [
+                _VERSIONED_WINDOWS_IMPORT,
+                _STABLE_WINDOWS_IMPORT,
+            ],
         },
         "_testsinglephase": {
             "core_module": True,
@@ -152,9 +161,8 @@ def _windows_extension(
         core_module,
         python_import,
         python_import_library,
-        stable_abi,
         stable_import,
-        version_abi,
+        windows_imports,
         extra_deps = [],
         extra_linkopts = [],
         extra_local_defines = []):
@@ -164,11 +172,14 @@ def _windows_extension(
         _WINDOWS_SYSTEM_LINKOPTS +
         extra_linkopts
     )
-    if version_abi:
-        deps.append(python_import)
-    if stable_abi:
-        deps.append(stable_import)
-        linkopts.append("/NODEFAULTLIB:python3.lib")
+    for windows_import in windows_imports:
+        if windows_import == _VERSIONED_WINDOWS_IMPORT:
+            deps.append(python_import)
+        elif windows_import == _STABLE_WINDOWS_IMPORT:
+            deps.append(stable_import)
+            linkopts.append("/NODEFAULTLIB:python3.lib")
+        else:
+            fail("Unsupported Windows import: %s" % windows_import)
 
     cc_binary(
         name = name,
@@ -233,8 +244,6 @@ def shared_extensions(
 
         if extension.get("windows", True):
             windows_output = module_name + ".pyd"
-            stable_abi = module_name in ["xxlimited", "xxlimited_35"]
-            version_abi = not stable_abi
             _windows_extension(
                 name = windows_output,
                 srcs = extension["srcs"],
@@ -242,9 +251,8 @@ def shared_extensions(
                 core_module = extension["core_module"],
                 python_import = python_import,
                 python_import_library = python_import_library,
-                stable_abi = stable_abi,
                 stable_import = stable_import,
-                version_abi = version_abi,
+                windows_imports = extension.get("windows_imports", [_VERSIONED_WINDOWS_IMPORT]),
                 extra_deps = extension.get("deps", []),
                 extra_linkopts = extension.get("windows_linkopts", []),
                 extra_local_defines = local_defines,
@@ -297,9 +305,8 @@ def shared_extensions(
             core_module = True,
             python_import = python_import,
             python_import_library = python_import_library,
-            stable_abi = False,
             stable_import = stable_import,
-            version_abi = True,
+            windows_imports = [_VERSIONED_WINDOWS_IMPORT],
         )
         windows_outputs.append(":" + asyncio_windows)
 
@@ -311,9 +318,8 @@ def shared_extensions(
         core_module = False,
         python_import = python_import,
         python_import_library = python_import_library,
-        stable_abi = False,
         stable_import = stable_import,
-        version_abi = True,
+        windows_imports = [_VERSIONED_WINDOWS_IMPORT],
     )
     windows_outputs.append(":" + testconsole)
 
