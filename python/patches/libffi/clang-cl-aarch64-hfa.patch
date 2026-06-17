@@ -1,0 +1,32 @@
+--- a/src/aarch64/ffi.c
++++ b/src/aarch64/ffi.c
+@@ -380 +380 @@
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) && !defined(__clang__)
+@@ -386 +386 @@
+-  ssize_t f = h - AARCH64_RET_S4;
++  intptr_t f = h - AARCH64_RET_S4;
+@@ -390 +390 @@
+-  asm volatile (
++  __asm__ volatile (
+@@ -451 +451 @@
+-#if defined(_MSC_VER)
++#if defined(_MSC_VER) && !defined(__clang__)
+@@ -470 +470 @@
+-      asm ("ldp q16, q17, [%1]\n\t"
++      __asm__ ("ldp q16, q17, [%1]\n\t"
+@@ -475 +475 @@
+-      asm ("ldp q16, q17, [%1]\n\t"
++      __asm__ ("ldp q16, q17, [%1]\n\t"
+@@ -481 +481 @@
+-      asm ("ldp q16, q17, [%1]\n\t"
++      __asm__ ("ldp q16, q17, [%1]\n\t"
+@@ -498 +498 @@
+-      asm ("ldp q16, q17, [%1]\n\t"
++      __asm__ ("ldp q16, q17, [%1]\n\t"
+@@ -503 +503 @@
+-      asm ("ldp q16, q17, [%1]\n\t"
++      __asm__ ("ldp q16, q17, [%1]\n\t"
+@@ -509 +509 @@
+-      asm ("ldp q16, q17, [%1]\n\t"
++      __asm__ ("ldp q16, q17, [%1]\n\t"
