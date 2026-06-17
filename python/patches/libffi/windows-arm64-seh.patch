@@ -10,7 +10,16 @@
 +	.seh_endprologue
 +#endif
 +
-@@ -297,0 +307,3 @@
+@@ -162 +171,7 @@
+-	.align	4
++#if defined(_WIN32)
++	/* LLVM's ARM64 SEH emitter cannot evaluate a function containing .align. */
++	nop
++	nop
++#else
++	.align	4
++#endif
+@@ -297,0 +313,3 @@
 +#if defined(_WIN32)
 +	.seh_endproc
 +#endif
