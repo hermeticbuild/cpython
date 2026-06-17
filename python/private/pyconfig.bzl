@@ -1,5 +1,6 @@
 """Toolchain checks used to generate CPython's pyconfig.h."""
 
+load("@bazel_lib//lib:copy_file.bzl", "copy_file")
 load("@rules_cc_autoconf//autoconf:checks.bzl", "utils")
 load("@rules_cc_autoconf//autoconf:defs.bzl", "autoconf", "autoconf_hdr", "checks", "macros")
 
@@ -1147,6 +1148,15 @@ def pyconfig(name, version):
     if version not in ["3.11", "3.12", "3.13", "3.14"]:
         fail("unsupported CPython version: {}".format(version))
 
+    windows_header = "PC/pyconfig.h"
+    if version == "3.13":
+        windows_header = ":" + name + "_windows"
+        copy_file(
+            name = name + "_windows",
+            src = "PC/pyconfig.h.in",
+            out = "PC/pyconfig.h",
+        )
+
     autoconf(
         name = name + "_darwin_arm64",
         checks = _darwin_platform_checks(version, 1 if version in ["3.13", "3.14"] else 2),
@@ -1243,8 +1253,8 @@ def pyconfig(name, version):
     native.alias(
         name = name,
         actual = select({
-            "//:windows_arm64": "PC/pyconfig.h",
-            "//:windows_x86_64": "PC/pyconfig.h",
+            "//:windows_arm64": windows_header,
+            "//:windows_x86_64": windows_header,
             "//conditions:default": ":" + name + "_posix",
         }),
     )
