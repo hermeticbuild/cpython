@@ -2,4 +2,5 @@ exports_files([
     "call_test.c",
     "closure_test.c",
     "complex_test.c",
+    "seh_test.c",
 ])

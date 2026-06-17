@@ -190,7 +190,6 @@ def upstream_regrtests(
                 "$(rlocationpath {})".format(python),
                 module,
                 "allow-no-tests" if allow_no_tests else "require-tests",
-                version,
             ],
             data = [
                 "@bazel_tools//tools/bash/runfiles",

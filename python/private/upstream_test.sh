@@ -26,7 +26,6 @@ python_basename="$(basename "$python_runfile")"
 readonly python_basename
 readonly test_name="$2"
 readonly no_tests_policy="$3"
-readonly python_version="$4"
 
 case "$no_tests_policy" in
   allow-no-tests | require-tests) ;;
@@ -155,18 +154,6 @@ case "$(uname -s):$test_name" in
     # Keep WindowsLoadTracker in the regrtest controller process. These tests
     # inspect the main interpreter's thread count inside the worker process.
     regrtest_worker_option=-j1
-    ;;
-esac
-
-case "$(uname -s):$test_name" in
-  CYGWIN*:test_ctypes | MINGW*:test_ctypes | MSYS*:test_ctypes)
-    ctypes_test_package=test.test_ctypes
-    if [[ "$python_version" == 3.11 ]]; then
-      ctypes_test_package=ctypes.test
-    fi
-    "$test_python" "${python_options[@]}" -m unittest -v \
-      "$ctypes_test_package.test_win32.FunctionCallTestCase.test_noargs" \
-      "$ctypes_test_package.test_win32.FunctionCallTestCase.test_SEH"
     ;;
 esac
 

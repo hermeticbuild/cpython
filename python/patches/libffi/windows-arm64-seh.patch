@@ -1,0 +1,16 @@
+--- a/src/aarch64/sysv.S
++++ b/src/aarch64/sysv.S
+@@ -91,0 +92,9 @@
++#if defined(_WIN32)
++	.seh_proc CNAME(ffi_call_SYSV_fake)
++CNAME(ffi_call_SYSV_fake):
++	/* Windows ARM64 unwind metadata requires an x29/x30 stack save. */
++	stp	x29, x30, [sp, #-32]!
++	.seh_save_fplr_x 32
++	.seh_endprologue
++#endif
++
+@@ -297,0 +307,3 @@
++#if defined(_WIN32)
++	.seh_endproc
++#endif

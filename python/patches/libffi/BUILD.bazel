@@ -1,1 +1,4 @@
-exports_files(["clang-cl-aarch64-hfa.patch"])
+exports_files([
+    "clang-cl-aarch64-hfa.patch",
+    "windows-arm64-seh.patch",
+])

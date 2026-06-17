@@ -87,7 +87,10 @@ def _python_impl(module_ctx):
             build_file = _LIBFFI_BUILD_FILE,
             integrity = "sha256-E4YH3uJovezzdK35FEwA6DnjhUH3XySh/PGLeP2kiy0=",
             patch_args = ["-p1"],
-            patches = [Label("//python/patches/libffi:clang-cl-aarch64-hfa.patch")],
+            patches = [
+                Label("//python/patches/libffi:clang-cl-aarch64-hfa.patch"),
+                Label("//python/patches/libffi:windows-arm64-seh.patch"),
+            ],
             strip_prefix = "libffi-3.4.7",
             urls = ["https://github.com/libffi/libffi/releases/download/v3.4.7/libffi-3.4.7.tar.gz"],
         )
