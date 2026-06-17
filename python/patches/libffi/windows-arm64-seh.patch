@@ -1,145 +1,26 @@
 --- a/src/aarch64/sysv.S
 +++ b/src/aarch64/sysv.S
-@@ -92 +92,4 @@
+@@ -92 +92,10 @@
 -CNAME(ffi_call_SYSV):
 +#if defined(_WIN32)
-+	.seh_proc CNAME(ffi_call_SYSV)
-+#endif
-+CNAME(ffi_call_SYSV):
-@@ -94,22 +97,39 @@
--	BTI_C
--	PAC_CFI_WINDOW_SAVE
--	/* Sign the lr with x1 since that is the CFA which is the modifer used in auth instructions */
--	SIGN_LR_WITH_REG(x1)
--
--#if defined(HAVE_ARM64E_PTRAUTH) && defined(__APPLE__)
--	/* darwin's libunwind assumes that the cfa is the sp and that's the data
--	 * used to sign the lr.  In order to allow unwinding through this
--	 * function it is necessary to point the cfa at the signing register.
--	 */
--	cfi_def_cfa(x1, 0);
--#endif
--	/* Use a stack frame allocated by our caller.  */
--	stp	x29, x30, [x1]
--	cfi_def_cfa_register(x1)
--	cfi_rel_offset (x29, 0)
--	cfi_rel_offset (x30, 8)
--	mov	x9, sp
--	str	x9, [x1, #32]
--	mov	x29, x1
--	cfi_def_cfa_register(x29)
--	mov	sp, x0
-+	BTI_C
-+#if defined(_WIN32)
-+	.seh_nop
++	.seh_proc CNAME(ffi_call_SYSV_fake)
++CNAME(ffi_call_SYSV_fake):
 +	stp	x29, x30, [sp, #-32]!
 +	.seh_save_fplr_x 32
-+	cfi_adjust_cfa_offset(32)
-+	cfi_rel_offset(x29, 0)
-+	cfi_rel_offset(x30, 8)
-+	str	x19, [sp, #16]
-+	.seh_save_reg x19, 16
-+	cfi_rel_offset(x19, 16)
 +	mov	x29, sp
 +	.seh_set_fp
-+	cfi_def_cfa_register(x29)
 +	.seh_endprologue
-+	mov	x19, x1
-+#else
-+	PAC_CFI_WINDOW_SAVE
-+	/* Sign the lr with x1 since that is the CFA which is the modifer used in auth instructions */
-+	SIGN_LR_WITH_REG(x1)
-+
-+#if defined(HAVE_ARM64E_PTRAUTH) && defined(__APPLE__)
-+	/* darwin's libunwind assumes that the cfa is the sp and that's the data
-+	 * used to sign the lr.  In order to allow unwinding through this
-+	 * function it is necessary to point the cfa at the signing register.
-+	 */
-+	cfi_def_cfa(x1, 0);
 +#endif
-+	/* Use a stack frame allocated by our caller.  */
-+	stp	x29, x30, [x1]
-+	cfi_def_cfa_register(x1)
-+	cfi_rel_offset (x29, 0)
-+	cfi_rel_offset (x30, 8)
-+	mov	x9, sp
-+	str	x9, [x1, #32]
-+	mov	x29, x1
-+	cfi_def_cfa_register(x29)
-+#endif
-+	mov	sp, x0
-@@ -126 +146,5 @@
--	stp	x3, x4, [x29, #16]	/* save rvalue and flags */
-+#if defined(_WIN32)
-+	stp	x3, x4, [x19, #16]	/* save rvalue and flags */
-+#else
-+	stp	x3, x4, [x29, #16]	/* save rvalue and flags */
-+#endif
-@@ -143,14 +167,20 @@
--	ldp	x3, x4, [x29, #16]	/* reload rvalue and flags */
--
--	/* Partially deconstruct the stack frame.  */
--	ldr	x9, [x29, #32]
--	mov	sp, x9
--	cfi_def_cfa_register (sp)
--	mov	x2, x29			/* Preserve for auth */
--	ldp     x29, x30, [x29]
--
--	/* Save the return value as directed.  */
--	adr	x5, 0f
--	and	w4, w4, #AARCH64_RET_MASK
--	add	x5, x5, x4, lsl #4
--	br	x5
-+#if defined(_WIN32)
-+	ldp	x3, x4, [x19, #16]	/* reload rvalue and flags */
-+#else
-+	ldp	x3, x4, [x29, #16]	/* reload rvalue and flags */
-+#endif
-+
-+#if !defined(_WIN32)
-+	/* Partially deconstruct the stack frame.  */
-+	ldr	x9, [x29, #32]
-+	mov	sp, x9
-+	cfi_def_cfa_register (sp)
-+	mov	x2, x29			/* Preserve for auth */
-+	ldp     x29, x30, [x29]
-+#endif
-+
-+	/* Save the return value as directed.  */
-+	adr	x5, 0f
-+	and	w4, w4, #AARCH64_RET_MASK
-+	add	x5, x5, x4, lsl #4
-+	br	x5
-@@ -162 +192,8 @@
++CNAME(ffi_call_SYSV):
+@@ -162 +171,6 @@
 -	.align	4
 +#if defined(_WIN32)
-+	/* LLVM's ARM64 SEH emitter cannot evaluate a function containing .align. */
-+	nop
-+	nop
++	/* LLVM's ARM64 SEH emitter cannot evaluate .align inside a function. */
 +	nop
 +#else
 +	.align	4
 +#endif
-@@ -294 +331,17 @@
--	AUTH_LR_WITH_REG(x2)
-+#if defined(_WIN32)
-+	.seh_startepilogue
-+	mov	sp, x29
-+	.seh_set_fp
-+	cfi_def_cfa_register(sp)
-+	ldr	x19, [sp, #16]
-+	.seh_save_reg x19, 16
-+	cfi_restore(x19)
-+	ldp	x29, x30, [sp], #32
-+	.seh_save_fplr_x 32
-+	cfi_adjust_cfa_offset(-32)
-+	cfi_restore(x29)
-+	cfi_restore(x30)
-+	.seh_endepilogue
-+#else
-+	AUTH_LR_WITH_REG(x2)
-+#endif
-@@ -297 +350,4 @@
+@@ -297 +311,4 @@
 -	cfi_endproc
 +	cfi_endproc
 +#if defined(_WIN32)
