@@ -75,6 +75,11 @@ cc_library(
         ":windows_x86_64": ["FFI_STATIC_BUILD=1"],
         "//conditions:default": [],
     }),
+    features = select({
+        ":windows_arm64": ["dynamic_link_msvcrt"],
+        ":windows_x86_64": ["dynamic_link_msvcrt"],
+        "//conditions:default": [],
+    }),
     srcs = [
         "src/closures.c",
         "src/java_raw_api.c",

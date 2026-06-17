@@ -1,0 +1,7 @@
+--- a/Lib/venv/__init__.py
++++ b/Lib/venv/__init__.py
+@@ -484,2 +484,4 @@
+                     shutil.copymode(srcfile, dstfile)
++                if os.name == 'nt':
++                    os.chmod(dstfile, 0o666)
+ 

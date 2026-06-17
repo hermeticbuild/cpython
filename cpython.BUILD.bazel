@@ -757,6 +757,13 @@ cc_test(
 )
 
 cc_test(
+    name = "libffi_call_test",
+    srcs = ["@cpython//python/private/libffi:call_test.c"],
+    deps = ["@cpython_libffi//:libffi"],
+    tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
+)
+
+cc_test(
     name = "libffi_closure_test",
     srcs = ["@cpython//python/private/libffi:closure_test.c"],
     deps = ["@cpython_libffi//:libffi"],

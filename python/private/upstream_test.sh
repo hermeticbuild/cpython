@@ -79,7 +79,10 @@ case "$(uname -s)" in
     TMPDIR="$(cygpath -aw "$short_test_tmp_posix/tmp")"
     TMP="$TMPDIR"
     TEMP="$TMPDIR"
-    export APPDATA HOME LOCALAPPDATA TEMP TMP TMPDIR USERPROFILE
+    SystemDrive="${SystemDrive:-${SYSTEMDRIVE:-C:}}"
+    SystemRoot="${SystemRoot:-${SYSTEMROOT:-$SystemDrive\\Windows}}"
+    ProgramFiles="${ProgramFiles:-${PROGRAMFILES:-${ProgramW6432:-${PROGRAMW6432:-$SystemDrive\\Program Files}}}}"
+    export APPDATA HOME LOCALAPPDATA ProgramFiles SystemDrive SystemRoot TEMP TMP TMPDIR USERPROFILE
     unset TZ
     ;;
   *)

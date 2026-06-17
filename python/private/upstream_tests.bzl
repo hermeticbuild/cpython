@@ -8,8 +8,14 @@ _PACKAGE_SUFFIX = "/__init__.py"
 _TEST_RUNNER = "@cpython//python/private:upstream_test.sh"
 _TEST_ENV_INHERIT = select({
     "@platforms//os:windows": [
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMW6432",
+        "SYSTEMDRIVE",
+        "SYSTEMROOT",
         "ProgramFiles",
         "ProgramFiles(x86)",
+        "ProgramW6432",
         "SystemDrive",
         "SystemRoot",
     ],
