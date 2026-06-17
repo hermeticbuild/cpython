@@ -14,7 +14,10 @@ package(default_visibility = ["//visibility:public"])
             version,
             mode,
         ],
-        data = ["@python%s//:python" % version.replace(".", "_")],
+        data = [
+            "@bazel_tools//tools/bash/runfiles",
+            "@python%s//:python" % version.replace(".", "_"),
+        ],
     )
     for version in [
         "3.14",

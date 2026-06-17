@@ -175,6 +175,7 @@ def upstream_regrtests(
                 "allow-no-tests" if allow_no_tests else "require-tests",
             ],
             data = [
+                "@bazel_tools//tools/bash/runfiles",
                 python,
                 source_by_module[module],
             ] + module_data + list(test_data),

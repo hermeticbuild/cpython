@@ -2,7 +2,26 @@
 
 set -euo pipefail
 
-readonly python="$TEST_SRCDIR/$1"
+# --- begin runfiles.bash initialization v3 ---
+set +e
+runfiles_library=bazel_tools/tools/bash/runfiles/runfiles.bash
+# shellcheck disable=SC1090
+source "${RUNFILES_DIR:-/dev/null}/$runfiles_library" 2>/dev/null || \
+  source "$(grep -sm1 "^$runfiles_library " "${RUNFILES_MANIFEST_FILE:-/dev/null}" | cut -f2- -d' ')" 2>/dev/null || \
+  source "$0.runfiles/$runfiles_library" 2>/dev/null || \
+  source "$(grep -sm1 "^$runfiles_library " "$0.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
+  source "$(grep -sm1 "^$runfiles_library " "$0.exe.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
+  { echo "cannot find $runfiles_library" >&2; exit 1; }
+unset runfiles_library
+set -e
+# --- end runfiles.bash initialization v3 ---
+
+python="$(rlocation "$1")"
+readonly python
+if [[ ! -f "$python" ]]; then
+  echo "Python runfile not found: $1" >&2
+  exit 2
+fi
 readonly expected_version="$2"
 readonly mode="$3"
 
