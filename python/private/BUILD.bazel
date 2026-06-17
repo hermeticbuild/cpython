@@ -17,6 +17,12 @@ exports_files([
 ])
 
 sh_binary(
+    name = "generate_build_details",
+    srcs = ["generate_build_details.sh"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
     name = "deepfreeze",
     srcs = ["deepfreeze.sh"],
     visibility = ["//visibility:public"],

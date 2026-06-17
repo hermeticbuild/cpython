@@ -31,13 +31,18 @@ def cpython_build_details(version, runtime_data, runtime_deps, core_copts, linko
 
     run_binary(
         name = "runtime_build_details",
-        srcs = ["Tools/build/generate-build-details.py"],
+        srcs = [
+            ":runtime/python_for_build_details",
+            "Tools/build/generate-build-details.py",
+        ] + runtime_data,
         outs = ["runtime/build-details.json"],
         args = [
+            "$(execpath :runtime/python_for_build_details)",
             "$(execpath Tools/build/generate-build-details.py)",
             "$(execpath runtime/build-details.json)",
         ],
-        tool = ":runtime/python_for_build_details",
+        execution_requirements = {"no-remote-exec": "1"},
+        tool = "@cpython//python/private:generate_build_details",
     )
 
     copy_to_directory(
