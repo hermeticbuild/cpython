@@ -1,0 +1,17 @@
+--- a/Modules/_tracemalloc.c
++++ b/Modules/_tracemalloc.c
+@@ -59,11 +59,12 @@
+ 
+ /* Pack the frame_t structure to reduce the memory footprint on 64-bit
+    architectures: 12 bytes instead of 16. */
++#ifdef _MSC_VER
++#pragma pack(push, 4)
++#endif
+ typedef struct
+ #ifdef __GNUC__
+ __attribute__((packed))
+-#elif defined(_MSC_VER)
+-#pragma pack(push, 4)
+ #endif
+ {
+     /* filename cannot be NULL: "<unknown>" is used if the Python frame
