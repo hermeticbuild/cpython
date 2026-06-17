@@ -146,7 +146,7 @@ if [[ "$test_name" == test_pydoc ]]; then
 fi
 
 test_path="$PATH"
-regrtest_options=()
+regrtest_worker_option=
 case "$(uname -s):$test_name" in
   CYGWIN*:test_dtrace | MINGW*:test_dtrace | MSYS*:test_dtrace)
     test_path="$(cygpath -u "${SystemRoot:-C:\\Windows}")/System32"
@@ -154,12 +154,16 @@ case "$(uname -s):$test_name" in
   CYGWIN*:test__xxsubinterpreters | CYGWIN*:test_interpreters | MINGW*:test__xxsubinterpreters | MINGW*:test_interpreters | MSYS*:test__xxsubinterpreters | MSYS*:test_interpreters)
     # Keep WindowsLoadTracker in the regrtest controller process. These tests
     # inspect the main interpreter's thread count inside the worker process.
-    regrtest_options+=(-j1)
+    regrtest_worker_option=-j1
     ;;
 esac
 
 set +e
-PATH="$test_path" "$test_python" "${python_options[@]}" -m test "${regrtest_options[@]}" --tempdir "$short_test_tmp" --verbose3 "$test_name"
+if [[ -n "$regrtest_worker_option" ]]; then
+  PATH="$test_path" "$test_python" "${python_options[@]}" -m test "$regrtest_worker_option" --tempdir "$short_test_tmp" --verbose3 "$test_name"
+else
+  PATH="$test_path" "$test_python" "${python_options[@]}" -m test --tempdir "$short_test_tmp" --verbose3 "$test_name"
+fi
 readonly status=$?
 set -e
 
