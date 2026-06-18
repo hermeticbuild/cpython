@@ -1,0 +1,10 @@
+--- a/autoconf/autoconf_hdr.bzl
++++ b/autoconf/autoconf_hdr.bzl
+@@ -139,4 +139,7 @@ def _autoconf_hdr_impl(ctx):
+         DefaultInfo(
+             files = depset([ctx.outputs.out]),
+         ),
++        OutputGroupInfo(
++            autoconf_manifest = depset([manifest]),
++        ),
+     ]

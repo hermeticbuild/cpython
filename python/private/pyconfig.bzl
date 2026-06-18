@@ -1225,8 +1225,8 @@ def _member_checks():
         ),
     ]
 
-def _darwin_platform_checks(version, support_tier):
-    return _common_fixed_defines(version) + [
+def _darwin_policy_checks(version, support_tier):
+    return [
         checks.AC_FAIL("_POSIX_C_SOURCE"),
         checks.AC_FAIL("_XOPEN_SOURCE"),
         checks.AC_FAIL("_XOPEN_SOURCE_EXTENDED"),
@@ -1239,8 +1239,8 @@ def _darwin_platform_checks(version, support_tier):
         checks.AC_DEFINE("WITH_DYLD", 1),
     ] + ([checks.AC_DEFINE("HAVE_STDARG_PROTOTYPES", 1)] if version == "3.11" else []) + ([checks.AC_DEFINE("_PYTHREAD_NAME_MAXLEN", 63)] if version == "3.14" else []) + _dynamic_loading_checks(version, []) + _posix_shmem_checks([]) + _pty_checks("util.h", "util.h", []) + _thread_name_checks(version, []) + _darwin_filesystem_checks() + _darwin_library_checks()
 
-def _linux_platform_checks(version):
-    return _common_fixed_defines(version) + [
+def _linux_policy_checks(version):
+    return [
         checks.AC_DEFINE("HAVE_DEV_PTMX", 1),
         checks.AC_DEFINE("HAVE_WORKING_TZSET", 1),
         checks.AC_DEFINE("PTHREAD_SYSTEM_SCHED_SUPPORTED", 1),
@@ -1269,30 +1269,6 @@ def pyconfig(name, version, windows_pyconfig_template = False):
             src = "PC/pyconfig.h.in",
             out = "PC/pyconfig.h",
         )
-
-    autoconf(
-        name = name + "_darwin_arm64",
-        checks = _darwin_platform_checks(version, 1 if version in ["3.13", "3.14"] else 2),
-        tags = ["manual"],
-    )
-
-    autoconf(
-        name = name + "_darwin_x86_64",
-        checks = _darwin_platform_checks(version, 1),
-        tags = ["manual"],
-    )
-
-    autoconf(
-        name = name + "_linux_arm64",
-        checks = _linux_platform_checks(version),
-        tags = ["manual"],
-    )
-
-    autoconf(
-        name = name + "_linux_x86_64",
-        checks = _linux_platform_checks(version),
-        tags = ["manual"],
-    )
 
     size_checks = [
         checks.AC_CHECK_ALIGNOF("long", define = "ALIGNOF_LONG"),
@@ -1360,21 +1336,23 @@ def pyconfig(name, version, windows_pyconfig_template = False):
             if_false = None,
         ))
 
+    common_checks = _common_fixed_defines(version) + size_checks + type_checks + _compiler_checks() + macros.AC_CHECK_HEADERS(
+        headers,
+        compile_defines = _SYSTEM_EXTENSION_DEFINES,
+    ) + _dependent_header_checks(version) + _member_checks() + _declaration_checks(version) + _epoll_checks() + _special_function_checks(version) + macros.AC_CHECK_FUNCS(
+        functions,
+        compile_defines = _SYSTEM_EXTENSION_DEFINES,
+    ) + _required_math_checks() + _capability_checks(version) + version_checks
+    target_policy_checks = select({
+        "//:darwin_arm64": _darwin_policy_checks(version, 1 if version in ["3.13", "3.14"] else 2),
+        "//:darwin_x86_64": _darwin_policy_checks(version, 1),
+        "//:linux_arm64": _linux_policy_checks(version),
+        "//:linux_x86_64": _linux_policy_checks(version),
+    })
+
     autoconf(
         name = name + "_checks",
-        checks = size_checks + type_checks + _compiler_checks() + macros.AC_CHECK_HEADERS(
-            headers,
-            compile_defines = _SYSTEM_EXTENSION_DEFINES,
-        ) + _dependent_header_checks(version) + _member_checks() + _declaration_checks(version) + _epoll_checks() + _special_function_checks(version) + macros.AC_CHECK_FUNCS(
-            functions,
-            compile_defines = _SYSTEM_EXTENSION_DEFINES,
-        ) + _required_math_checks() + _capability_checks(version) + version_checks,
-        deps = select({
-            "//:darwin_arm64": [":" + name + "_darwin_arm64"],
-            "//:darwin_x86_64": [":" + name + "_darwin_x86_64"],
-            "//:linux_arm64": [":" + name + "_linux_arm64"],
-            "//:linux_x86_64": [":" + name + "_linux_x86_64"],
-        }),
+        checks = common_checks + target_policy_checks,
         tags = ["manual"],
     )
 
@@ -1384,6 +1362,32 @@ def pyconfig(name, version, windows_pyconfig_template = False):
         deps = [":" + name + "_checks"],
         tags = ["manual"],
         template = "pyconfig.h.in",
+    )
+
+    native.filegroup(
+        name = name + "_posix_manifest",
+        srcs = [":" + name + "_posix"],
+        output_group = "autoconf_manifest",
+        tags = ["manual"],
+    )
+
+    native.filegroup(
+        name = name + "_posix_audit_outputs",
+        srcs = [
+            ":" + name + "_posix",
+            ":" + name + "_posix_manifest",
+        ],
+        tags = ["manual"],
+    )
+
+    native.filegroup(
+        name = name + "_configure_audit_sources",
+        srcs = [
+            "Include/patchlevel.h",
+            "configure.ac",
+            "pyconfig.h.in",
+        ],
+        tags = ["manual"],
     )
 
     native.alias(

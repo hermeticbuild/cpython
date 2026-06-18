@@ -7,14 +7,13 @@ This program reads checked-out CPython sources. It does not execute configure.
 from __future__ import annotations
 
 import argparse
-import ast
 import collections
 import dataclasses
 import json
 import pathlib
 import re
 import sys
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 
 
 _SYMBOL_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -22,11 +21,6 @@ _TEMPLATE_UNDEF_PATTERN = re.compile(
     r"^\s*#\s*undef\s+([A-Za-z_][A-Za-z0-9_]*)\b",
     re.MULTILINE,
 )
-_EXPLICIT_DEFINE_PATTERN = re.compile(
-    r"(?:\bdefine\s*=|\bAC_(?:DEFINE|FAIL)\s*\()\s*[\"']"
-    r"([A-Za-z_][A-Za-z0-9_]*)[\"']",
-)
-_QUOTED_STRING_PATTERN = re.compile(r"[\"']([^\"']+)[\"']")
 _SUPPORTED_VERSIONS = ("3.11", "3.12", "3.13", "3.14")
 _SUPPORTED_PLATFORMS = (
     "darwin_arm64",
@@ -34,19 +28,12 @@ _SUPPORTED_PLATFORMS = (
     "linux_arm64",
     "linux_x86_64",
 )
-_PLATFORM_OUTPUT_CONFIGS = {
-    "darwin_arm64": "macos_aarch64",
-    "darwin_x86_64": "macos_x86_64",
-    "linux_arm64": "linux_aarch64",
-    "linux_x86_64": "linux_x86_64",
-}
 
 
 @dataclasses.dataclass(frozen=True)
 class SourceVersion:
     version: str
     release: str
-    root: pathlib.Path
     configure_words: dict[str, tuple[int, ...]]
     template_symbols: frozenset[str]
 
@@ -59,7 +46,6 @@ class GeneratedConfig:
     manifest: pathlib.Path
     values: dict[str, str | None]
     producers: frozenset[str]
-    producer_paths: frozenset[str]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -75,46 +61,6 @@ class ConfigureDecision:
     classification: str
     implementation: str
     justification: str
-
-
-def _line_number(text: str, offset: int) -> int:
-    return text.count("\n", 0, offset) + 1
-
-
-def _parse_string_list(text: str, variable: str) -> list[tuple[str, int]]:
-    match = re.search(
-        rf"(?m)^{re.escape(variable)}\s*=\s*\[(.*?)^\]",
-        text,
-        re.DOTALL,
-    )
-    if match is None:
-        raise ValueError(f"{variable} list not found in pyconfig.bzl")
-
-    result = []
-    for string_match in _QUOTED_STRING_PATTERN.finditer(match.group(1)):
-        value = string_match.group(1)
-        if "\\" in value:
-            value = ast.literal_eval(repr(value))
-        result.append(
-            (
-                value,
-                _line_number(text, match.start(1) + string_match.start()),
-            )
-        )
-    return result
-
-
-def _parse_prefixed_string_lists(
-    text: str,
-    prefix: str,
-) -> list[tuple[str, int]]:
-    variables = re.findall(
-        rf"(?m)^({re.escape(prefix)}(?:_[A-Za-z0-9_]+)?)\s*=\s*\[",
-        text,
-    )
-    if not variables:
-        raise ValueError(f"no {prefix} lists found in pyconfig.bzl")
-    return [item for variable in variables for item in _parse_string_list(text, variable)]
 
 
 def _configure_symbol_token(symbol: str) -> str | None:
@@ -159,72 +105,20 @@ def _configure_evidence(
     return f"`{token}`: {locations}"
 
 
-def _autoconf_name(value: str) -> str:
-    return re.sub(r"[^A-Za-z0-9]", "_", value).upper()
-
-
-def _record(
-    evidence: dict[str, set[str]],
-    symbol: str,
-    description: str,
-) -> None:
-    if not _SYMBOL_PATTERN.fullmatch(symbol):
-        raise ValueError(f"invalid pyconfig symbol {symbol!r}")
-    evidence.setdefault(symbol, set()).add(description)
-
-
-def _pyconfig_evidence(path: pathlib.Path) -> dict[str, set[str]]:
-    text = path.read_text(encoding="utf-8")
-    evidence: dict[str, set[str]] = {}
-
-    for match in _EXPLICIT_DEFINE_PATTERN.finditer(text):
-        symbol = match.group(1)
-        line = _line_number(text, match.start(1))
-        _record(evidence, symbol, f"L{line} explicit")
-
-    for header, line in _parse_prefixed_string_lists(text, "_HEADERS"):
-        _record(
-            evidence,
-            f"HAVE_{_autoconf_name(header)}",
-            f"L{line} `_HEADERS`: `{header}`",
-        )
-
-    for function, line in _parse_prefixed_string_lists(text, "_FUNCTIONS"):
-        _record(
-            evidence,
-            f"HAVE_{_autoconf_name(function)}",
-            f"L{line} `_FUNCTIONS`: `{function}`",
-        )
-
-    for call in re.finditer(
-        r"macros\.AC_CHECK_DECLS\s*\(\s*\[(.*?)\]",
-        text,
-        re.DOTALL,
-    ):
-        for declaration in _QUOTED_STRING_PATTERN.finditer(call.group(1)):
-            value = declaration.group(1)
-            line = _line_number(text, call.start(1) + declaration.start())
-            _record(
-                evidence,
-                f"HAVE_DECL_{_autoconf_name(value)}",
-                f"L{line} `AC_CHECK_DECLS`: `{value}`",
-            )
-
-    return evidence
-
-
 def _load_source_version(specification: str) -> SourceVersion:
     try:
-        version, root_text = specification.split("=", 1)
+        version, configure_path_text, template_path_text, patchlevel_path_text = (
+            specification.split("=", 3)
+        )
     except ValueError as error:
         raise ValueError(
-            f"invalid --source {specification!r}; expected VERSION=PATH"
+            f"invalid --source {specification!r}; expected "
+            "VERSION=CONFIGURE=TEMPLATE=PATCHLEVEL"
         ) from error
 
-    root = pathlib.Path(root_text).resolve()
-    configure_path = root / "configure.ac"
-    template_path = root / "pyconfig.h.in"
-    patchlevel_path = root / "Include" / "patchlevel.h"
+    configure_path = pathlib.Path(configure_path_text).resolve()
+    template_path = pathlib.Path(template_path_text).resolve()
+    patchlevel_path = pathlib.Path(patchlevel_path_text).resolve()
     if not configure_path.is_file():
         raise ValueError(f"CPython {version} configure.ac not found: {configure_path}")
     if not template_path.is_file():
@@ -254,7 +148,6 @@ def _load_source_version(specification: str) -> SourceVersion:
     return SourceVersion(
         version=version,
         release=release,
-        root=root,
         configure_words=_word_line_index(configure_text),
         template_symbols=template_symbols,
     )
@@ -274,10 +167,30 @@ def _load_generated_config(specification: str) -> GeneratedConfig:
     manifest = pathlib.Path(manifest_text).resolve()
     header_content = header.read_text(encoding="utf-8")
     manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
-    if not isinstance(manifest_data, dict) or not isinstance(
-        manifest_data.get("defines"), dict
-    ):
+    if not isinstance(manifest_data, dict):
         raise ValueError(f"invalid rules_cc_autoconf manifest: {manifest}")
+    for collection_name in ("defines", "substs"):
+        collection = manifest_data.get(collection_name)
+        if not isinstance(collection, dict):
+            raise ValueError(
+                f"invalid rules_cc_autoconf {collection_name}: {manifest}"
+            )
+        for name, producer in collection.items():
+            if not _SYMBOL_PATTERN.fullmatch(name):
+                raise ValueError(
+                    f"invalid rules_cc_autoconf {collection_name} name "
+                    f"{name!r}: {manifest}"
+                )
+            if (
+                not isinstance(producer, dict)
+                or not isinstance(producer.get("path"), str)
+                or not producer["path"]
+                or not isinstance(producer.get("unquote"), bool)
+            ):
+                raise ValueError(
+                    f"invalid rules_cc_autoconf {collection_name} producer "
+                    f"{name!r}: {manifest}"
+                )
 
     values: dict[str, str | None] = {}
     for line in header_content.splitlines():
@@ -308,9 +221,6 @@ def _load_generated_config(specification: str) -> GeneratedConfig:
         manifest=manifest,
         values=values,
         producers=frozenset(manifest_data["defines"]),
-        producer_paths=frozenset(
-            item["path"] for item in manifest_data["defines"].values()
-        ),
     )
 
 
@@ -412,11 +322,6 @@ def _markdown_cell(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ")
 
 
-def _format_evidence(items: Iterable[str]) -> str:
-    values = sorted(items)
-    return "<br>".join(values) if values else "—"
-
-
 def _has_producer_for_each_generated_config(
     symbol: str,
     sources: Sequence[SourceVersion],
@@ -498,64 +403,24 @@ def _validate_expected_values(
         )
 
 
-def _validate_generated_identity(item: GeneratedConfig) -> None:
-    output_config = _PLATFORM_OUTPUT_CONFIGS[item.platform]
-    repository = f"+python+python{item.version.replace('.', '_')}"
-    expected_output = f"/bazel-out/{output_config}-"
-    expected_repository = f"/external/{repository}/"
-    header = item.header.as_posix()
-    manifest = item.manifest.as_posix()
-    if expected_output not in header or expected_repository not in header:
-        raise ValueError(
-            f"generated {item.version} {item.platform} header has inconsistent "
-            f"provenance: {item.header}"
-        )
-    if expected_output not in manifest or expected_repository not in manifest:
-        raise ValueError(
-            f"generated {item.version} {item.platform} manifest has inconsistent "
-            f"provenance: {item.manifest}"
-        )
-    producer_prefix = f"bazel-out/{output_config}-"
-    producer_repository = f"/external/{repository}/"
-    invalid_paths = sorted(
-        path
-        for path in item.producer_paths
-        if not path.startswith(producer_prefix) or producer_repository not in path
-    )
-    if invalid_paths:
-        raise ValueError(
-            f"generated {item.version} {item.platform} manifest contains "
-            f"inconsistent producer path {invalid_paths[0]!r}"
-        )
-
-
 def _render_checklist(
     sources: Sequence[SourceVersion],
-    pyconfig_display: str,
-    implementation: dict[str, set[str]],
     generated: Sequence[GeneratedConfig],
     overrides: dict[str, Disposition],
     reviewed_undefined: dict[str, Disposition],
     decisions: Sequence[ConfigureDecision],
 ) -> str:
     symbols = sorted(set().union(*(source.template_symbols for source in sources)))
-    manifest_producers = (
-        set().union(*(item.producers for item in generated)) if generated else set()
-    )
-
     classifications: dict[str, Disposition] = {}
     for symbol in symbols:
         if symbol in overrides:
             classifications[symbol] = overrides[symbol]
-        elif (
-            _has_producer_for_each_generated_config(symbol, sources, generated)
-            or (not generated and symbol in implementation)
-        ):
+        elif _has_producer_for_each_generated_config(symbol, sources, generated):
             classifications[symbol] = Disposition(
-                classification="PROBE",
+                classification="AUTOCONF_PRODUCER",
                 justification=(
-                    "Generated by a rules_cc_autoconf producer in every applicable "
-                    "generated configuration."
+                    "Produced by rules_cc_autoconf in every applicable generated "
+                    "configuration."
                 ),
             )
         elif symbol in reviewed_undefined:
@@ -574,7 +439,7 @@ def _render_checklist(
         "# CPython configure check audit",
         "",
         "This checklist compares each pinned CPython `pyconfig.h.in` symbol with "
-        "`python/private/pyconfig.bzl` and generated `rules_cc_autoconf` manifests. "
+        "generated `rules_cc_autoconf` manifests and reviewed dispositions. "
         "The generator reads `configure.ac`; it does not execute `configure`.",
         "",
         "The `configure.ac` columns contain lexical occurrences for source navigation; "
@@ -595,11 +460,6 @@ def _render_checklist(
             f"- CPython {source.release}: `configure.ac` and `pyconfig.h.in` "
             f"({len(source.template_symbols)} symbols)"
         )
-    lines.extend(
-        [
-            f"- rules_cc_autoconf implementation: `{pyconfig_display}`",
-        ]
-    )
     for item in generated:
         lines.append(
             f"- CPython {item.version} {item.platform}: generated header and manifest"
@@ -622,8 +482,9 @@ def _render_checklist(
     lines.extend(
         [
             "",
-            "`PROBE` is the default for a generated manifest producer. The disposition "
-            "file overrides `PROBE` for fixed target facts, build policy, dependency "
+            "`AUTOCONF_PRODUCER` is the default for a generated manifest producer. "
+            "The manifest does not distinguish compiler probes from fixed definitions. "
+            "The disposition file records fixed target facts, build policy, dependency "
             "contracts, and intentional undefined values.",
         ]
     )
@@ -645,7 +506,7 @@ def _render_checklist(
     header.extend(
         f"{item.version} {item.platform} generated" for item in generated
     )
-    header.extend(["`python/private/pyconfig.bzl`", "Justification"])
+    header.append("Justification")
     lines.extend(
         [
             "",
@@ -676,10 +537,6 @@ def _render_checklist(
                 row.append(f"undefined ({producer})")
             else:
                 row.append(f"`{item.values[symbol]}`")
-        evidence = set(implementation.get(symbol, ()))
-        if symbol in manifest_producers:
-            evidence.add("generated manifest producer")
-        row.append(_format_evidence(evidence))
         row.append(disposition.justification)
         lines.append("| " + " | ".join(_markdown_cell(cell) for cell in row) + " |")
 
@@ -714,14 +571,8 @@ def _parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
         "--source",
         action="append",
         required=True,
-        metavar="VERSION=PATH",
-        help="CPython source root; repeat once per pinned version",
-    )
-    parser.add_argument(
-        "--pyconfig",
-        type=pathlib.Path,
-        required=True,
-        help="path to python/private/pyconfig.bzl",
+        metavar="VERSION=CONFIGURE=TEMPLATE=PATCHLEVEL",
+        help="CPython configure.ac, pyconfig.h.in, and patchlevel.h paths",
     )
     parser.add_argument(
         "--generated",
@@ -763,9 +614,6 @@ def main(argv: Sequence[str]) -> int:
             (_load_source_version(value) for value in arguments.source),
             key=lambda source: source.version,
         )
-        pyconfig_display = arguments.pyconfig.as_posix()
-        pyconfig_path = arguments.pyconfig.resolve()
-        implementation = _pyconfig_evidence(pyconfig_path)
         generated = sorted(
             (_load_generated_config(value) for value in arguments.generated),
             key=lambda item: (item.version, item.platform),
@@ -805,7 +653,6 @@ def main(argv: Sequence[str]) -> int:
                 raise ValueError(f"generated manifest reused: {item.manifest}")
             generated_headers.add(item.header)
             generated_manifests.add(item.manifest)
-            _validate_generated_identity(item)
             missing_values = sorted(
                 source_by_version[item.version].template_symbols - item.values.keys()
             )
@@ -841,8 +688,6 @@ def main(argv: Sequence[str]) -> int:
         )
         markdown = _render_checklist(
             sources,
-            pyconfig_display,
-            implementation,
             generated,
             overrides,
             reviewed_undefined,
@@ -856,7 +701,6 @@ def main(argv: Sequence[str]) -> int:
                 sources,
                 generated,
             )
-            and (generated or symbol not in implementation)
             and symbol not in overrides
             and symbol not in reviewed_undefined
         )
