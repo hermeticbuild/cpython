@@ -1,7 +1,8 @@
 """Deterministic CPython install_only archive."""
 
+load("@bazel_lib//lib:run_binary.bzl", "run_binary")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
-load("@tar.bzl", "mtree_mutate", "mtree_spec", "tar")
+load("@tar.bzl", "mtree_spec", "tar")
 
 def cpython_install_only(version, install_tree = ":install_tree"):
     """Defines the python-build-standalone-style install_only archive."""
@@ -12,27 +13,20 @@ def cpython_install_only(version, install_tree = ":install_tree"):
         visibility = ["//visibility:private"],
     )
 
-    mtree_mutate(
+    run_binary(
         name = "_install_only_normalized_mtree",
-        mtree = ":_install_only_mtree",
-        group = "0",
-        groupname = "root",
-        includes = ["@cpython//python/private:install_only_mtree.awk"],
-        mtime = 1704067200,
-        owner = "0",
-        ownername = "root",
-        script_args = select({
-            "@platforms//os:linux": {
-                "add_python_symlinks": "1",
-                "python_version": version,
-            },
-            "@platforms//os:macos": {
-                "add_python_symlinks": "1",
-                "python_version": version,
-            },
-            "//conditions:default": {},
+        srcs = [":_install_only_mtree"],
+        outs = ["_install_only_normalized.mtree"],
+        args = [
+            "$(execpath :_install_only_mtree)",
+            "$(execpath _install_only_normalized.mtree)",
+            version,
+        ] + select({
+            "@platforms//os:linux": ["--add-python-symlinks"],
+            "@platforms//os:macos": ["--add-python-symlinks"],
+            "//conditions:default": [],
         }),
-        strip_prefix = "install",
+        tool = "@cpython//python/private:install_only_mtree",
         visibility = ["//visibility:private"],
     )
 
@@ -40,7 +34,7 @@ def cpython_install_only(version, install_tree = ":install_tree"):
         name = "install_only",
         srcs = [install_tree],
         compress = "gzip",
-        compute_unused_inputs = 1,
+        compute_unused_inputs = 0,
         mtree = ":_install_only_normalized_mtree",
         out = "python-install_only.tar.gz",
     )

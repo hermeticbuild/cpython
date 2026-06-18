@@ -8,7 +8,6 @@ exports_files([
     "install_tree.bzl",
     "install_tree_test.sh",
     "install_only.bzl",
-    "install_only_mtree.awk",
     "install_only_test.py",
     "install_only_test.sh",
     "modules.bzl",
@@ -34,5 +33,22 @@ sh_binary(
 cc_binary(
     name = "concat_files",
     srcs = ["concat_files.c"],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "install_only_mtree",
+    srcs = ["install_only_mtree.c"],
+    features = select({
+        "@platforms//os:windows": [
+            "-dynamic_link_msvcrt",
+            "static_link_msvcrt",
+        ],
+        "//conditions:default": [],
+    }),
+    local_defines = select({
+        "@platforms//os:windows": ["_CRT_SECURE_NO_WARNINGS"],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
 )
