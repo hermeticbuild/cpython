@@ -17,6 +17,7 @@ load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("//bazel:module_sources.bzl", "CPYTHON_MODULE_SOURCES")
 load("//bazel:release.bzl", "CPYTHON_RELEASE", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_RESOURCE_FIELD3", "PYTHON_SOABI", "PYTHON_VERSION")
 
 package(
@@ -607,6 +608,7 @@ RUNTIME_MODULE_COPTS = COMMON_COPTS + select({
 BOOTSTRAP_MODULES = declare_cpython_static_modules(
     name = "python_bootstrap_modules",
     version = PYTHON_VERSION,
+    module_sources = CPYTHON_MODULE_SOURCES,
     categories = ["bootstrap"],
     copts = RUNTIME_MODULE_COPTS,
     deps = [":headers"],
@@ -615,6 +617,7 @@ BOOTSTRAP_MODULES = declare_cpython_static_modules(
 STATIC_BOOTSTRAP_MODULES = declare_cpython_static_modules(
     name = "python_static_bootstrap_modules",
     version = PYTHON_VERSION,
+    module_sources = CPYTHON_MODULE_SOURCES,
     categories = ["bootstrap"],
     copts = COMMON_COPTS,
     deps = [":bootstrap_headers"],
@@ -627,6 +630,7 @@ SHARED_MODULE_NAMES = ["_testcapi"] + (
 STATIC_MODULES = declare_cpython_static_modules(
     name = "python_static_modules",
     version = PYTHON_VERSION,
+    module_sources = CPYTHON_MODULE_SOURCES,
     copts = RUNTIME_MODULE_COPTS,
     deps = [":headers"],
     exclude_modules = SHARED_MODULE_NAMES,
@@ -1084,6 +1088,7 @@ cc_binary(
 SHARED_EXTENSIONS = shared_extensions(
     PYTHON_VERSION,
     PYTHON_SOABI,
+    CPYTHON_MODULE_SOURCES,
     python_import = ":python_dll_import",
     python_import_library = PYTHON_IMPORT_LIBRARY,
     stable_import = ":python3_dll_import",

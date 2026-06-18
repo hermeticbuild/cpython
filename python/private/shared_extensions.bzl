@@ -1,6 +1,5 @@
 """Shared CPython extensions required by the test runtimes."""
 
-load("@cpython//python/private:modules.bzl", "ctypes_sources", "sqlite3_sources", "testcapi_sources")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
 _VERSIONED_WINDOWS_IMPORT = "versioned"
@@ -20,7 +19,11 @@ _COMMON_EXTENSIONS = {
             ],
         },
         "posix": False,
-        "srcs": ["Modules/" + source for source in ctypes_sources()],
+        "source_variables_by_version": {
+            "3.12": ["MODULE__CTYPES_MALLOC_CLOSURE"],
+            "3.13": ["MODULE__CTYPES_MALLOC_CLOSURE"],
+            "3.14": ["MODULE__CTYPES_MALLOC_CLOSURE"],
+        },
         "windows_linkopts": [
             "/EXPORT:DllGetClassObject,PRIVATE",
             "/EXPORT:DllCanUnloadNow,PRIVATE",
@@ -28,7 +31,6 @@ _COMMON_EXTENSIONS = {
     },
     "_ctypes_test": {
         "core_module": False,
-        "srcs": ["Modules/_ctypes/_ctypes_test.c"],
     },
     "_sqlite3": {
         "core_module": True,
@@ -38,24 +40,19 @@ _COMMON_EXTENSIONS = {
             "PY_SQLITE_HAVE_SERIALIZE=1",
         ],
         "posix": False,
-        "srcs": ["Modules/" + source for source in sqlite3_sources()],
     },
     "_testimportmultiple": {
         "core_module": False,
-        "srcs": ["Modules/_testimportmultiple.c"],
     },
     "_testmultiphase": {
         "core_module": True,
-        "srcs": ["Modules/_testmultiphase.c"],
     },
     "xxlimited": {
         "core_module": False,
-        "srcs": ["Modules/xxlimited.c"],
         "windows_imports": [_STABLE_WINDOWS_IMPORT],
     },
     "xxlimited_35": {
         "core_module": False,
-        "srcs": ["Modules/xxlimited_35.c"],
         "windows_imports": [_STABLE_WINDOWS_IMPORT],
     },
 }
@@ -65,13 +62,11 @@ _TESTCLINIC_LIMITED_EXTENSION = {
     # pythonXY.lib. CPython PCbuild therefore builds it as a .pyd.
     "core_module": False,
     "posix": False,
-    "srcs": ["Modules/_testclinic_limited.c"],
 }
 
 _WMI_EXTENSION = {
     "core_module": False,
     "posix": False,
-    "srcs": ["PC/_wmimodule.cpp"],
     "windows_copts": [
         "/std:c++20",
         "/O2",
@@ -87,13 +82,11 @@ _VERSION_EXTENSIONS = {
     "3.11": {
         "_testcapi": {
             "core_module": True,
-            "srcs": ["Modules/" + source for source in testcapi_sources("3.11")],
         },
     },
     "3.12": {
         "_testcapi": {
             "core_module": True,
-            "srcs": ["Modules/" + source for source in testcapi_sources("3.12")],
             "windows_imports": [
                 _VERSIONED_WINDOWS_IMPORT,
                 _STABLE_WINDOWS_IMPORT,
@@ -101,36 +94,30 @@ _VERSION_EXTENSIONS = {
         },
         "_testsinglephase": {
             "core_module": True,
-            "srcs": ["Modules/_testsinglephase.c"],
         },
         "_wmi": _WMI_EXTENSION,
     },
     "3.13": {
         "_testcapi": {
             "core_module": True,
-            "srcs": ["Modules/" + source for source in testcapi_sources("3.13")],
         },
         "_testexternalinspection": {
             "core_module": True,
-            "srcs": ["Modules/_testexternalinspection.c"],
             "windows": False,
         },
         "_testclinic_limited": _TESTCLINIC_LIMITED_EXTENSION,
         "_testsinglephase": {
             "core_module": True,
-            "srcs": ["Modules/_testsinglephase.c"],
         },
         "_wmi": _WMI_EXTENSION,
     },
     "3.14": {
         "_testcapi": {
             "core_module": True,
-            "srcs": ["Modules/" + source for source in testcapi_sources("3.14")],
         },
         "_testclinic_limited": _TESTCLINIC_LIMITED_EXTENSION,
         "_testsinglephase": {
             "core_module": True,
-            "srcs": ["Modules/_testsinglephase.c"],
         },
         "_wmi": _WMI_EXTENSION,
     },
@@ -229,9 +216,29 @@ def _windows_extension(
         visibility = ["//visibility:public"],
     )
 
+def _extension_sources(module_name, extension, module_sources, version):
+    if module_name not in module_sources:
+        fail("CPython shared extension {} has no generated source membership".format(
+            repr(module_name),
+        ))
+    generated = module_sources[module_name]
+    expected_source_variables = extension.get("source_variables_by_version", {}).get(version, [])
+    if generated.source_variables != expected_source_variables:
+        fail("CPython shared extension {} has source variables {}; expected {} for CPython {}".format(
+            repr(module_name),
+            repr(generated.source_variables),
+            repr(expected_source_variables),
+            version,
+        ))
+    return struct(
+        posix = generated.sources,
+        windows = generated.sources + generated.windows_sources,
+    )
+
 def shared_extensions(
         version,
         soabi,
+        module_sources,
         headers = ":headers",
         python_import = None,
         python_import_library = None,
@@ -241,6 +248,7 @@ def shared_extensions(
     Args:
       version: The CPython minor version.
       soabi: The POSIX extension-module ABI tag.
+      module_sources: Generated source membership for the pinned release.
       headers: The CPython header target.
       python_import: The versioned Windows CPython import-library target.
       python_import_library: The versioned Windows import-library filename.
@@ -259,6 +267,7 @@ def shared_extensions(
     windows_outputs = [":sqlite3_dll"]
     for module_name in sorted(extensions):
         extension = extensions[module_name]
+        extension_sources = _extension_sources(module_name, extension, module_sources, version)
         local_defines = (
             extension.get("local_defines", []) +
             extension.get("local_defines_by_version", {}).get(version, [])
@@ -267,7 +276,7 @@ def shared_extensions(
             output = module_name + ".so"
             _shared_extension(
                 name = output,
-                srcs = extension["srcs"],
+                srcs = extension_sources.posix,
                 headers = headers,
                 core_module = extension["core_module"],
                 deps = extension.get("deps", []),
@@ -280,7 +289,7 @@ def shared_extensions(
             windows_output = module_name + ".pyd"
             _windows_extension(
                 name = windows_output,
-                srcs = extension["srcs"],
+                srcs = extension_sources.windows,
                 headers = headers,
                 core_module = extension["core_module"],
                 python_import = python_import,
@@ -298,19 +307,20 @@ def shared_extensions(
     linux_arm64_outputs = common_outputs
     linux_x86_64_outputs = common_outputs
     if version == "3.14":
+        asyncio_sources = _extension_sources("_asyncio", {}, module_sources, version)
         asyncio_darwin = "_asyncio.%s-darwin.so" % soabi
         asyncio_linux_arm64 = "_asyncio.%s-aarch64-linux-gnu.so" % soabi
         asyncio_linux_x86_64 = "_asyncio.%s-x86_64-linux-gnu.so" % soabi
         _shared_extension(
             name = asyncio_darwin,
-            srcs = ["Modules/_asynciomodule.c"],
+            srcs = asyncio_sources.posix,
             headers = headers,
             core_module = True,
             target_compatible_with = ["@platforms//os:macos"],
         )
         _shared_extension(
             name = asyncio_linux_arm64,
-            srcs = ["Modules/_asynciomodule.c"],
+            srcs = asyncio_sources.posix,
             headers = headers,
             core_module = True,
             target_compatible_with = [
@@ -320,7 +330,7 @@ def shared_extensions(
         )
         _shared_extension(
             name = asyncio_linux_x86_64,
-            srcs = ["Modules/_asynciomodule.c"],
+            srcs = asyncio_sources.posix,
             headers = headers,
             core_module = True,
             target_compatible_with = [
@@ -335,7 +345,7 @@ def shared_extensions(
         asyncio_windows = "_asyncio.pyd"
         _windows_extension(
             name = asyncio_windows,
-            srcs = ["Modules/_asynciomodule.c"],
+            srcs = asyncio_sources.windows,
             headers = headers,
             core_module = True,
             python_import = python_import,
@@ -346,9 +356,10 @@ def shared_extensions(
         windows_outputs.append(":" + asyncio_windows)
 
     testconsole = "_testconsole.pyd"
+    testconsole_sources = _extension_sources("_testconsole", {}, module_sources, version)
     _windows_extension(
         name = testconsole,
-        srcs = ["PC/_testconsole.c"],
+        srcs = testconsole_sources.windows,
         headers = headers,
         core_module = False,
         python_import = python_import,

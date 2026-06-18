@@ -25,324 +25,275 @@ _CORE_INITTAB = [
 
 def _module(
         name,
-        sources,
         category,
         init_symbol = None,
         copts = [],
         includes = [],
         deps = [],
+        excluded_sources = [],
         linkopts = [],
         platform = "all",
-        source_root = "Modules",
-        windows_sources = []):
+        source_variables_by_version = {},
+        source_name = None):
     return struct(
         category = category,
         copts = copts,
         deps = deps,
+        excluded_sources = excluded_sources,
         includes = includes,
         init_symbol = init_symbol or "PyInit_{}".format(name),
         linkopts = linkopts,
         name = name,
         platform = platform,
-        sources = ["{}/{}".format(source_root, source) for source in sources],
-        windows_sources = [
-            "{}/{}".format(source_root, source)
-            for source in windows_sources
-        ],
+        source_variables_by_version = source_variables_by_version,
+        source_name = source_name or name,
     )
 
 _BOOTSTRAP_PREFIX = [
-    _module("atexit", ["atexitmodule.c"], "bootstrap"),
-    _module("faulthandler", ["faulthandler.c"], "bootstrap"),
-    _module("posix", ["posixmodule.c"], "bootstrap", platform = "posix"),
-    _module("nt", ["posixmodule.c"], "bootstrap", init_symbol = "PyInit_nt", platform = "windows"),
-    _module("_winapi", ["_winapi.c"], "bootstrap", platform = "windows"),
-    _module("winreg", ["winreg.c"], "bootstrap", platform = "windows", source_root = "PC"),
-    _module("_signal", ["signalmodule.c"], "bootstrap"),
-    _module("_tracemalloc", ["_tracemalloc.c"], "bootstrap"),
+    _module("atexit", "bootstrap"),
+    _module("faulthandler", "bootstrap"),
+    _module("posix", "bootstrap", platform = "posix"),
+    _module("nt", "bootstrap", init_symbol = "PyInit_nt", platform = "windows", source_name = "posix"),
+    _module("_winapi", "bootstrap", platform = "windows"),
+    _module("winreg", "bootstrap", platform = "windows"),
+    _module("_signal", "bootstrap"),
+    _module("_tracemalloc", "bootstrap"),
 ]
 
 _BOOTSTRAP_IMPORT = [
-    _module("_codecs", ["_codecsmodule.c"], "bootstrap"),
-    _module("_collections", ["_collectionsmodule.c"], "bootstrap"),
-    _module("errno", ["errnomodule.c"], "bootstrap"),
-    _module("_io", [
-        "_io/_iomodule.c",
-        "_io/iobase.c",
-        "_io/fileio.c",
-        "_io/bytesio.c",
-        "_io/bufferedio.c",
-        "_io/textio.c",
-        "_io/stringio.c",
-    ], "bootstrap", windows_sources = ["_io/winconsoleio.c"]),
-    _module("itertools", ["itertoolsmodule.c"], "bootstrap"),
-    _module("_sre", ["_sre/sre.c"], "bootstrap"),
+    _module("_codecs", "bootstrap"),
+    _module("_collections", "bootstrap"),
+    _module("errno", "bootstrap"),
+    _module("_io", "bootstrap"),
+    _module("itertools", "bootstrap"),
+    _module("_sre", "bootstrap"),
 ]
 
 _BOOTSTRAP_SUFFIX = [
-    _module("_thread", ["_threadmodule.c"], "bootstrap"),
-    _module("time", ["timemodule.c"], "bootstrap"),
-    _module("_typing", ["_typingmodule.c"], "bootstrap"),
-    _module("_weakref", ["_weakref.c"], "bootstrap"),
-    _module("_abc", ["_abc.c"], "bootstrap"),
-    _module("_functools", ["_functoolsmodule.c"], "bootstrap"),
-    _module("_locale", ["_localemodule.c"], "bootstrap"),
-    _module("_operator", ["_operator.c"], "bootstrap"),
-    _module("_stat", ["_stat.c"], "bootstrap"),
-    _module("_symtable", ["symtablemodule.c"], "bootstrap"),
-    _module("pwd", ["pwdmodule.c"], "bootstrap", platform = "posix"),
+    _module("_thread", "bootstrap"),
+    _module("time", "bootstrap"),
+    _module("_typing", "bootstrap"),
+    _module("_weakref", "bootstrap"),
+    _module("_abc", "bootstrap"),
+    _module("_functools", "bootstrap"),
+    _module("_locale", "bootstrap"),
+    _module("_operator", "bootstrap"),
+    _module("_stat", "bootstrap"),
+    _module("_symtable", "bootstrap"),
+    _module("pwd", "bootstrap", platform = "posix"),
 ]
-
-_CTYPES_SOURCES = [
-    "_ctypes/_ctypes.c",
-    "_ctypes/callbacks.c",
-    "_ctypes/callproc.c",
-    "_ctypes/stgdict.c",
-    "_ctypes/cfield.c",
-]
-
-def ctypes_sources():
-    """Returns the _ctypes source paths."""
-    return _CTYPES_SOURCES
-
-_SQLITE3_SOURCES = [
-    "_sqlite/blob.c",
-    "_sqlite/connection.c",
-    "_sqlite/cursor.c",
-    "_sqlite/microprotocols.c",
-    "_sqlite/module.c",
-    "_sqlite/prepare_protocol.c",
-    "_sqlite/row.c",
-    "_sqlite/statement.c",
-    "_sqlite/util.c",
-]
-
-def sqlite3_sources():
-    """Returns the _sqlite3 source paths."""
-    return _SQLITE3_SOURCES
 
 _STDLIB_COMMON = [
-    _module("array", ["arraymodule.c"], "stdlib"),
+    _module("array", "stdlib"),
     _module(
         "_bz2",
-        ["_bz2module.c"],
         "stdlib",
         deps = ["@bzip2//:bz2"],
     ),
-    _module("_bisect", ["_bisectmodule.c"], "stdlib"),
-    _module("_csv", ["_csv.c"], "stdlib"),
+    _module("_bisect", "stdlib"),
+    _module("_csv", "stdlib"),
     _module(
         "_ctypes",
-        ctypes_sources(),
         "stdlib",
         deps = ["@cpython_libffi//:libffi"],
         platform = "posix",
+        source_variables_by_version = {
+            "3.12": ["MODULE__CTYPES_MALLOC_CLOSURE"],
+            "3.13": ["MODULE__CTYPES_MALLOC_CLOSURE"],
+            "3.14": ["MODULE__CTYPES_MALLOC_CLOSURE"],
+        },
     ),
-    _module("_heapq", ["_heapqmodule.c"], "stdlib"),
-    _module("_json", ["_json.c"], "stdlib"),
+    _module("_heapq", "stdlib"),
+    _module("_json", "stdlib"),
     _module(
         "_hashlib",
-        ["_hashopenssl.c"],
         "stdlib",
         deps = ["@openssl//:crypto"],
     ),
     _module(
         "_lzma",
-        ["_lzmamodule.c"],
         "stdlib",
         deps = ["@xz//:lzma"],
     ),
-    _module("_lsprof", ["_lsprof.c", "rotatingtree.c"], "stdlib"),
-    _module("_pickle", ["_pickle.c"], "stdlib"),
-    _module("_queue", ["_queuemodule.c"], "stdlib"),
-    _module("_random", ["_randommodule.c"], "stdlib"),
-    _module("_struct", ["_struct.c"], "stdlib"),
+    _module("_lsprof", "stdlib"),
+    _module("_pickle", "stdlib"),
+    _module("_queue", "stdlib"),
+    _module("_random", "stdlib"),
+    _module("_struct", "stdlib"),
     _module(
         "_ssl",
-        ["_ssl.c"],
         "stdlib",
         deps = ["@openssl//:ssl"],
     ),
     _module(
         "_sqlite3",
-        sqlite3_sources(),
         "stdlib",
         deps = [":hermetic_sqlite3"],
         platform = "posix",
     ),
-    _module("_zoneinfo", ["_zoneinfo.c"], "stdlib"),
-    _module("math", ["mathmodule.c"], "stdlib"),
-    _module("cmath", ["cmathmodule.c"], "stdlib"),
-    _module("_statistics", ["_statisticsmodule.c"], "stdlib"),
+    _module("_zoneinfo", "stdlib"),
+    _module("math", "stdlib"),
+    _module("cmath", "stdlib"),
+    _module("_statistics", "stdlib"),
     _module(
         "zlib",
-        ["zlibmodule.c"],
         "stdlib",
         deps = ["@zlib//:zlib"],
     ),
 ]
 
 _STDLIB_BEFORE_3_14 = [
-    _module("_asyncio", ["_asynciomodule.c"], "stdlib"),
-    _module("_contextvars", ["_contextvarsmodule.c"], "stdlib"),
-    _module("_opcode", ["_opcode.c"], "stdlib"),
-    _module("_datetime", ["_datetimemodule.c"], "stdlib"),
+    _module("_asyncio", "stdlib"),
+    _module("_contextvars", "stdlib"),
+    _module("_opcode", "stdlib"),
+    _module("_datetime", "stdlib"),
 ]
 
 _STDLIB_3_12 = [
-    _module("_xxsubinterpreters", ["_xxsubinterpretersmodule.c"], "stdlib"),
-    _module("_xxinterpchannels", ["_xxinterpchannelsmodule.c"], "stdlib"),
-    _module("audioop", ["audioop.c"], "stdlib"),
+    _module("_xxsubinterpreters", "stdlib"),
+    _module("_xxinterpchannels", "stdlib"),
+    _module("audioop", "stdlib"),
 ]
 
 _STDLIB_3_11 = [
-    _module("_xxsubinterpreters", ["_xxsubinterpretersmodule.c"], "stdlib"),
-    _module("audioop", ["audioop.c"], "stdlib"),
+    _module("_xxsubinterpreters", "stdlib"),
+    _module("audioop", "stdlib"),
 ]
 
 _STDLIB_3_13 = [
-    _module("_interpreters", ["_interpretersmodule.c"], "stdlib"),
-    _module("_interpchannels", ["_interpchannelsmodule.c"], "stdlib"),
-    _module("_interpqueues", ["_interpqueuesmodule.c"], "stdlib"),
+    _module("_interpreters", "stdlib"),
+    _module("_interpchannels", "stdlib"),
+    _module("_interpqueues", "stdlib"),
 ]
 
 _STDLIB_3_14 = [
-    _module("_asyncio", ["_asynciomodule.c"], "stdlib", platform = "windows"),
-    _module("_contextvars", ["_contextvars.c"], "stdlib", source_root = "Python"),
-    _module("_interpreters", ["_interpretersmodule.c"], "stdlib"),
-    _module("_interpchannels", ["_interpchannelsmodule.c"], "stdlib"),
-    _module("_interpqueues", ["_interpqueuesmodule.c"], "stdlib"),
-    _module("_remote_debugging", ["_remote_debugging_module.c"], "stdlib"),
+    _module("_asyncio", "stdlib", platform = "windows"),
+    _module("_contextvars", "stdlib"),
+    _module("_interpreters", "stdlib"),
+    _module("_interpchannels", "stdlib"),
+    _module("_interpqueues", "stdlib"),
+    _module("_remote_debugging", "stdlib"),
 ]
 
 _BUNDLED_BASE = [
     _module(
         "_decimal",
-        ["_decimal/_decimal.c"],
         "bundled",
         deps = [":bundled_libmpdec"],
     ),
     _module(
         "binascii",
-        ["binascii.c"],
         "bundled",
         copts = ["-DUSE_ZLIB_CRC32=1"],
         deps = ["@zlib//:zlib"],
     ),
     _module(
         "pyexpat",
-        ["pyexpat.c"],
         "bundled",
         deps = [":bundled_expat"],
     ),
     _module(
         "_elementtree",
-        ["_elementtree.c"],
         "bundled",
         deps = ["pyexpat", ":bundled_expat"],
     ),
-    _module("_multibytecodec", ["cjkcodecs/multibytecodec.c"], "bundled"),
+    _module("_multibytecodec", "bundled"),
     _module(
         "_codecs_cn",
-        ["cjkcodecs/_codecs_cn.c"],
         "bundled",
         deps = ["_multibytecodec"],
     ),
     _module(
         "_codecs_hk",
-        ["cjkcodecs/_codecs_hk.c"],
         "bundled",
         deps = ["_multibytecodec"],
     ),
     _module(
         "_codecs_iso2022",
-        ["cjkcodecs/_codecs_iso2022.c"],
         "bundled",
         deps = ["_multibytecodec"],
     ),
     _module(
         "_codecs_jp",
-        ["cjkcodecs/_codecs_jp.c"],
         "bundled",
         deps = ["_multibytecodec"],
     ),
     _module(
         "_codecs_kr",
-        ["cjkcodecs/_codecs_kr.c"],
         "bundled",
         deps = ["_multibytecodec"],
     ),
     _module(
         "_codecs_tw",
-        ["cjkcodecs/_codecs_tw.c"],
         "bundled",
         deps = ["_multibytecodec"],
     ),
-    _module("unicodedata", ["unicodedata.c"], "bundled"),
+    _module("unicodedata", "bundled"),
 ]
 
 _BUNDLED_3_11 = [
-    _module("_md5", ["md5module.c"], "bundled"),
-    _module("_sha1", ["sha1module.c"], "bundled"),
-    _module("_sha256", ["sha256module.c"], "bundled"),
-    _module("_sha512", ["sha512module.c"], "bundled"),
-    _module("_sha3", ["_sha3/sha3module.c"], "bundled"),
+    _module("_md5", "bundled"),
+    _module("_sha1", "bundled"),
+    _module("_sha256", "bundled"),
+    _module("_sha512", "bundled"),
+    _module("_sha3", "bundled"),
     _module(
         "_blake2",
-        [
-            "_blake2/blake2module.c",
-            "_blake2/blake2b_impl.c",
-            "_blake2/blake2s_impl.c",
-        ],
         "bundled",
         deps = [":bundled_blake2"],
     ),
 ]
 
 _BUNDLED_3_12_13 = [
-    _module("_md5", ["md5module.c"], "bundled", deps = [":bundled_hacl_md5"]),
-    _module("_sha1", ["sha1module.c"], "bundled", deps = [":bundled_hacl_sha1"]),
-    _module("_sha2", ["sha2module.c"], "bundled", deps = [":bundled_hacl_sha2"]),
-    _module("_sha3", ["sha3module.c"], "bundled", deps = [":bundled_hacl_sha3"]),
+    _module(
+        "_md5",
+        "bundled",
+        deps = [":bundled_hacl_md5"],
+        excluded_sources = ["Modules/_hacl/Hacl_Hash_MD5.c"],
+    ),
+    _module(
+        "_sha1",
+        "bundled",
+        deps = [":bundled_hacl_sha1"],
+        excluded_sources = ["Modules/_hacl/Hacl_Hash_SHA1.c"],
+    ),
+    _module("_sha2", "bundled", deps = [":bundled_hacl_sha2"]),
+    _module(
+        "_sha3",
+        "bundled",
+        deps = [":bundled_hacl_sha3"],
+        excluded_sources = ["Modules/_hacl/Hacl_Hash_SHA3.c"],
+    ),
     _module(
         "_blake2",
-        [
-            "_blake2/blake2module.c",
-            "_blake2/blake2b_impl.c",
-            "_blake2/blake2s_impl.c",
-        ],
         "bundled",
         deps = [":bundled_blake2"],
     ),
 ]
 
 _BUNDLED_3_14 = [
-    _module("_md5", ["md5module.c"], "bundled", deps = [":bundled_hacl_md5"]),
-    _module("_sha1", ["sha1module.c"], "bundled", deps = [":bundled_hacl_sha1"]),
-    _module("_sha2", ["sha2module.c"], "bundled", deps = [":bundled_hacl_sha2"]),
-    _module("_sha3", ["sha3module.c"], "bundled", deps = [":bundled_hacl_sha3"]),
-    _module("_blake2", ["blake2module.c"], "bundled", deps = [":bundled_hacl_blake2"]),
-    _module("_hmac", ["hmacmodule.c"], "bundled", deps = [":bundled_hacl_hmac"]),
+    _module("_md5", "bundled", deps = [":bundled_hacl_md5"]),
+    _module("_sha1", "bundled", deps = [":bundled_hacl_sha1"]),
+    _module("_sha2", "bundled", deps = [":bundled_hacl_sha2"]),
+    _module("_sha3", "bundled", deps = [":bundled_hacl_sha3"]),
+    _module("_blake2", "bundled", deps = [":bundled_hacl_blake2"]),
+    _module("_hmac", "bundled", deps = [":bundled_hacl_hmac"]),
 ]
 
 _POSIX_COMMON = [
-    _module("fcntl", ["fcntlmodule.c"], "posix", platform = "posix"),
-    _module("grp", ["grpmodule.c"], "posix", platform = "posix"),
-    _module("mmap", ["mmapmodule.c"], "posix"),
-    _module("_posixsubprocess", ["_posixsubprocess.c"], "posix", platform = "posix"),
-    _module("resource", ["resource.c"], "posix", platform = "posix"),
-    _module("select", ["selectmodule.c"], "posix"),
-    _module("_socket", ["socketmodule.c"], "posix"),
-    _module("syslog", ["syslogmodule.c"], "posix", platform = "posix"),
-    _module("termios", ["termios.c"], "posix", platform = "posix"),
-    _module("_posixshmem", ["_multiprocessing/posixshmem.c"], "posix", platform = "posix"),
-    _module("_multiprocessing", [
-        "_multiprocessing/multiprocessing.c",
-        "_multiprocessing/semaphore.c",
-    ], "posix"),
+    _module("fcntl", "posix", platform = "posix"),
+    _module("grp", "posix", platform = "posix"),
+    _module("mmap", "posix"),
+    _module("_posixsubprocess", "posix", platform = "posix"),
+    _module("resource", "posix", platform = "posix"),
+    _module("select", "posix"),
+    _module("_socket", "posix"),
+    _module("syslog", "posix", platform = "posix"),
+    _module("termios", "posix", platform = "posix"),
+    _module("_posixshmem", "posix", platform = "posix"),
+    _module("_multiprocessing", "posix"),
     _module(
         "_scproxy",
-        ["_scproxy.c"],
         "posix",
         linkopts = [
             "-framework",
@@ -355,188 +306,49 @@ _POSIX_COMMON = [
 ]
 
 _WINDOWS_COMMON = [
-    _module("_overlapped", ["overlapped.c"], "posix", platform = "windows"),
-    _module("msvcrt", ["msvcrtmodule.c"], "posix", platform = "windows", source_root = "PC"),
+    _module("_overlapped", "posix", platform = "windows"),
+    _module("msvcrt", "posix", platform = "windows"),
     _module(
         "winsound",
-        ["winsound.c"],
         "posix",
         platform = "windows",
-        source_root = "PC",
     ),
 ]
 
 _POSIX_3_12 = [
-    _module("ossaudiodev", ["ossaudiodev.c"], "posix", platform = "linux"),
-    _module("spwd", ["spwdmodule.c"], "posix", platform = "linux"),
-]
-
-_TESTCAPI_3_11_SOURCES = [
-    "_testcapimodule.c",
-]
-
-_TESTCAPI_3_12_SOURCES = [
-    "_testcapimodule.c",
-    "_testcapi/vectorcall.c",
-    "_testcapi/vectorcall_limited.c",
-    "_testcapi/heaptype.c",
-    "_testcapi/abstract.c",
-    "_testcapi/bytearray.c",
-    "_testcapi/bytes.c",
-    "_testcapi/unicode.c",
-    "_testcapi/dict.c",
-    "_testcapi/set.c",
-    "_testcapi/list.c",
-    "_testcapi/tuple.c",
-    "_testcapi/getargs.c",
-    "_testcapi/pytime.c",
-    "_testcapi/datetime.c",
-    "_testcapi/docstring.c",
-    "_testcapi/mem.c",
-    "_testcapi/watchers.c",
-    "_testcapi/long.c",
-    "_testcapi/float.c",
-    "_testcapi/complex.c",
-    "_testcapi/numbers.c",
-    "_testcapi/structmember.c",
-    "_testcapi/exceptions.c",
-    "_testcapi/code.c",
-    "_testcapi/buffer.c",
-    "_testcapi/pyos.c",
-    "_testcapi/run.c",
-    "_testcapi/file.c",
-    "_testcapi/codec.c",
-    "_testcapi/immortal.c",
-    "_testcapi/heaptype_relative.c",
-    "_testcapi/gc.c",
-    "_testcapi/sys.c",
-    "_testcapi/import.c",
-    "_testcapi/eval.c",
+    _module("ossaudiodev", "posix", platform = "linux"),
+    _module("spwd", "posix", platform = "linux"),
 ]
 
 _TEST_3_12 = [
-    _module("xxsubtype", ["xxsubtype.c"], "test"),
-    _module("_xxtestfuzz", [
-        "_xxtestfuzz/_xxtestfuzz.c",
-        "_xxtestfuzz/fuzzer.c",
-    ], "test"),
-    _module("_testbuffer", ["_testbuffer.c"], "test"),
-    _module("_testinternalcapi", ["_testinternalcapi.c"], "test"),
-    _module("_testcapi", _TESTCAPI_3_12_SOURCES, "test"),
-    _module("_testclinic", ["_testclinic.c"], "test"),
+    _module("xxsubtype", "test"),
+    _module("_xxtestfuzz", "test"),
+    _module("_testbuffer", "test"),
+    _module("_testinternalcapi", "test"),
+    _module("_testcapi", "test"),
+    _module("_testclinic", "test"),
 ]
 
 _TEST_3_11 = [
-    _module("xxsubtype", ["xxsubtype.c"], "test"),
-    _module("_xxtestfuzz", [
-        "_xxtestfuzz/_xxtestfuzz.c",
-        "_xxtestfuzz/fuzzer.c",
-    ], "test"),
-    _module("_testbuffer", ["_testbuffer.c"], "test"),
-    _module("_testinternalcapi", ["_testinternalcapi.c"], "test"),
-    _module("_testcapi", _TESTCAPI_3_11_SOURCES, "test"),
-    _module("_testclinic", ["_testclinic.c"], "test"),
+    _module("xxsubtype", "test"),
+    _module("_xxtestfuzz", "test"),
+    _module("_testbuffer", "test"),
+    _module("_testinternalcapi", "test"),
+    _module("_testcapi", "test"),
+    _module("_testclinic", "test"),
 ]
 
-_TESTCAPI_3_13_SOURCES = [
-    "_testcapimodule.c",
-    "_testcapi/vectorcall.c",
-    "_testcapi/heaptype.c",
-    "_testcapi/abstract.c",
-    "_testcapi/unicode.c",
-    "_testcapi/dict.c",
-    "_testcapi/set.c",
-    "_testcapi/list.c",
-    "_testcapi/tuple.c",
-    "_testcapi/getargs.c",
-    "_testcapi/datetime.c",
-    "_testcapi/docstring.c",
-    "_testcapi/mem.c",
-    "_testcapi/watchers.c",
-    "_testcapi/long.c",
-    "_testcapi/float.c",
-    "_testcapi/complex.c",
-    "_testcapi/numbers.c",
-    "_testcapi/structmember.c",
-    "_testcapi/exceptions.c",
-    "_testcapi/code.c",
-    "_testcapi/buffer.c",
-    "_testcapi/pyatomic.c",
-    "_testcapi/run.c",
-    "_testcapi/file.c",
-    "_testcapi/codec.c",
-    "_testcapi/immortal.c",
-    "_testcapi/gc.c",
-    "_testcapi/hash.c",
-    "_testcapi/time.c",
-    "_testcapi/bytes.c",
-    "_testcapi/object.c",
-    "_testcapi/monitoring.c",
-]
-
-def testcapi_sources(version):
-    """Returns the _testcapi source paths for a supported CPython version."""
-    if version == "3.11":
-        return _TESTCAPI_3_11_SOURCES
-    if version == "3.12":
-        return _TESTCAPI_3_12_SOURCES
-    if version == "3.13":
-        return _TESTCAPI_3_13_SOURCES
-    if version == "3.14":
-        return _TESTCAPI_3_13_SOURCES + [
-            "_testcapi/config.c",
-            "_testcapi/import.c",
-            "_testcapi/frame.c",
-            "_testcapi/type.c",
-            "_testcapi/function.c",
-        ]
-    fail("testcapi_sources does not support CPython %s" % version)
-
-def _test_3_13_14(version):
+def _test_3_13_14():
     return [
-        _module("xxsubtype", ["xxsubtype.c"], "test"),
-        _module("_xxtestfuzz", [
-            "_xxtestfuzz/_xxtestfuzz.c",
-            "_xxtestfuzz/fuzzer.c",
-        ], "test"),
-        _module("_testbuffer", ["_testbuffer.c"], "test"),
-        _module("_testinternalcapi", [
-            "_testinternalcapi.c",
-            "_testinternalcapi/test_lock.c",
-            "_testinternalcapi/pytime.c",
-            "_testinternalcapi/set.c",
-            "_testinternalcapi/test_critical_sections.c",
-        ] + (["_testinternalcapi/complex.c"] if version == "3.14" else []), "test"),
-        _module("_testcapi", testcapi_sources(version), "test", platform = "windows"),
-        _module("_testlimitedcapi", [
-            "_testlimitedcapi.c",
-            "_testlimitedcapi/abstract.c",
-            "_testlimitedcapi/bytearray.c",
-            "_testlimitedcapi/bytes.c",
-            "_testlimitedcapi/complex.c",
-            "_testlimitedcapi/dict.c",
-            "_testlimitedcapi/eval.c",
-            "_testlimitedcapi/float.c",
-            "_testlimitedcapi/heaptype_relative.c",
-            "_testlimitedcapi/import.c",
-            "_testlimitedcapi/list.c",
-            "_testlimitedcapi/long.c",
-            "_testlimitedcapi/object.c",
-            "_testlimitedcapi/pyos.c",
-            "_testlimitedcapi/set.c",
-            "_testlimitedcapi/sys.c",
-            "_testlimitedcapi/tuple.c",
-            "_testlimitedcapi/unicode.c",
-            "_testlimitedcapi/vectorcall_limited.c",
-            "_testlimitedcapi/file.c",
-        ] + ([
-            "_testlimitedcapi/codec.c",
-            "_testlimitedcapi/version.c",
-        ] if version == "3.14" else []), "test"),
-        _module("_testclinic", ["_testclinic.c"], "test"),
+        _module("xxsubtype", "test"),
+        _module("_xxtestfuzz", "test"),
+        _module("_testbuffer", "test"),
+        _module("_testinternalcapi", "test"),
+        _module("_testcapi", "test", platform = "windows"),
+        _module("_testlimitedcapi", "test"),
+        _module("_testclinic", "test"),
         _module(
             "_testclinic_limited",
-            ["_testclinic_limited.c"],
             "test",
             platform = "posix",
         ),
@@ -545,16 +357,16 @@ def _test_3_13_14(version):
 def _bootstrap_modules(version):
     modules = _BOOTSTRAP_PREFIX
     if version in ["3.13", "3.14"]:
-        modules = modules + [_module("_suggestions", ["_suggestions.c"], "bootstrap")]
+        modules = modules + [_module("_suggestions", "bootstrap")]
     if version == "3.14":
-        modules = modules + [_module("_datetime", ["_datetimemodule.c"], "bootstrap")]
+        modules = modules + [_module("_datetime", "bootstrap")]
     modules = modules + _BOOTSTRAP_IMPORT
     if version in ["3.13", "3.14"]:
-        modules = modules + [_module("_sysconfig", ["_sysconfig.c"], "bootstrap")]
+        modules = modules + [_module("_sysconfig", "bootstrap")]
     if version == "3.14":
         modules = modules + [
-            _module("_types", ["_typesmodule.c"], "bootstrap"),
-            _module("_opcode", ["_opcode.c"], "bootstrap"),
+            _module("_types", "bootstrap"),
+            _module("_opcode", "bootstrap"),
         ]
     return modules + _BOOTSTRAP_SUFFIX
 
@@ -595,7 +407,7 @@ def _version_modules(version):
             _BUNDLED_3_12_13 +
             _POSIX_COMMON +
             _WINDOWS_COMMON +
-            _test_3_13_14(version)
+            _test_3_13_14()
         )
     if version == "3.14":
         return (
@@ -606,18 +418,46 @@ def _version_modules(version):
             _BUNDLED_3_14 +
             _POSIX_COMMON +
             _WINDOWS_COMMON +
-            _test_3_13_14(version)
+            _test_3_13_14()
         )
     fail("Unsupported CPython version {}; expected one of {}".format(
         repr(version),
         ", ".join(SUPPORTED_PYTHON_VERSIONS),
     ))
 
-def cpython_static_module_manifest(version):
+def _resolved_module_sources(module, module_sources, version):
+    if module.source_name not in module_sources:
+        fail("CPython module {} has no generated source membership".format(repr(module.source_name)))
+    generated = module_sources[module.source_name]
+    expected_source_variables = module.source_variables_by_version.get(version, [])
+    if generated.source_variables != expected_source_variables:
+        fail("CPython module {} has source variables {}; expected {} for CPython {}".format(
+            repr(module.name),
+            repr(generated.source_variables),
+            repr(expected_source_variables),
+            version,
+        ))
+    for source in module.excluded_sources:
+        if source not in generated.sources:
+            fail("CPython module {} cannot exclude absent source {}".format(
+                repr(module.name),
+                repr(source),
+            ))
+    return struct(
+        sources = [
+            source
+            for source in generated.sources
+            if source not in module.excluded_sources
+        ],
+        windows_sources = generated.windows_sources,
+    )
+
+def cpython_static_module_manifest(version, module_sources):
     """Returns the static-module records for one pinned CPython minor version.
 
     Args:
         version: Supported CPython minor version.
+        module_sources: Generated source membership for the pinned release.
 
     Returns:
         Static-module records for version.
@@ -628,6 +468,7 @@ def cpython_static_module_manifest(version):
         if module.name in names:
             fail("Duplicate CPython {} module {}".format(version, repr(module.name)))
         names[module.name] = True
+        resolved_sources = _resolved_module_sources(module, module_sources, version)
         version_copts = []
         if version == "3.11" and module.name == "_ctypes":
             version_copts = [
@@ -644,9 +485,8 @@ def cpython_static_module_manifest(version):
             linkopts = module.linkopts,
             name = module.name,
             platform = module.platform,
-            sources = module.sources,
-            version = version,
-            windows_sources = module.windows_sources,
+            sources = resolved_sources.sources,
+            windows_sources = resolved_sources.windows_sources,
         ))
     return result
 
@@ -745,6 +585,7 @@ def _module_dep_label(dep, module_libraries):
 def declare_cpython_static_modules(
         name,
         version,
+        module_sources,
         deps = [],
         copts = [],
         categories = None,
@@ -757,6 +598,7 @@ def declare_cpython_static_modules(
     Args:
         name: Name of the aggregate cc_library.
         version: Supported CPython minor version.
+        module_sources: Generated source membership for the pinned release.
         deps: Dependencies required by every module, including the Python headers.
         copts: C options required by every module. Do not define Py_BUILD_CORE.
         categories: Optional subset of bootstrap, bundled, posix, stdlib, and test.
@@ -776,7 +618,7 @@ def declare_cpython_static_modules(
     excluded = {module_name: True for module_name in exclude_modules}
     modules = [
         module
-        for module in cpython_static_module_manifest(version)
+        for module in cpython_static_module_manifest(version, module_sources)
         if module.category in selected_categories and module.name not in excluded
     ]
     target_names = {
