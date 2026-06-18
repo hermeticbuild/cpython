@@ -5,7 +5,7 @@ load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
-load("@cpython//python/private:platforms.bzl", "cpython_target_field_select", "declare_cpython_target_config_settings")
+load("@cpython//python/private:platforms.bzl", "MACOSX_DEPLOYMENT_TARGET", "cpython_target_field_select", "declare_cpython_target_config_settings")
 load("@cpython//python/private:pyconfig.bzl", "pyconfig")
 load("@cpython//python/private:shared_extensions.bzl", "shared_extensions")
 load("@cpython//python/private:test_programs.bzl", "native_test_programs")
@@ -193,8 +193,6 @@ cc_import(
 
 SYSCONFIG_PREFIX = "/python"
 
-# Keep this equal to the pinned LLVM toolchain's -mmacosx-version-min value.
-MACOSX_DEPLOYMENT_TARGET = "14.0"
 SYSCONFIG_LIBDEST = "{}/lib/python{}".format(SYSCONFIG_PREFIX, PYTHON_VERSION)
 SYSCONFIG_INCLUDEPY = "{}/include/python{}".format(SYSCONFIG_PREFIX, PYTHON_VERSION)
 SYSCONFIG_COMMON_BUILD_VARS = {
@@ -237,6 +235,7 @@ SYSCONFIG_COMMON_BUILD_VARS = {
 
 cpython_sysconfig(
     name = "generated_sysconfig",
+    build_details_schema = CPYTHON_RELEASE.build_details_schema or "",
     build_vars = select({
         ":darwin_arm64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
             "BLDSHARED": "clang -shared",
@@ -344,10 +343,20 @@ cpython_sysconfig(
         ":windows_x86_64": ["Py_ENABLE_SHARED"],
         "//conditions:default": [],
     }),
+    cache_tag = CPYTHON_RELEASE.cache_tag,
+    hexversion = CPYTHON_RELEASE.hexversion,
     makefile_template = "Makefile.pre.in",
+    major = CPYTHON_RELEASE.major,
+    micro = CPYTHON_RELEASE.micro,
     multiarch = cpython_target_field_select("multiarch"),
+    minor = CPYTHON_RELEASE.minor,
     platform = cpython_target_field_select("sysconfig_platform"),
+    platform_tag = cpython_target_field_select("sysconfig_platform_tag"),
     pyconfig = ":pyconfig_h",
+    release = CPYTHON_RELEASE.release,
+    release_level = CPYTHON_RELEASE.release_level,
+    serial = CPYTHON_RELEASE.serial,
+    supports_isolated_interpreters = CPYTHON_RELEASE.supports_isolated_interpreters or False,
 )
 
 filegroup(
@@ -1235,10 +1244,6 @@ PYTHON_RUNTIME_DEPS = select({
 
 BUILD_METADATA = cpython_build_metadata(
     version = PYTHON_VERSION,
-    core_copts = CORE_COPTS,
-    linkopts = PYTHON_LINKOPTS,
-    runtime_data = PYTHON_RUNTIME_DATA,
-    runtime_deps = PYTHON_RUNTIME_DEPS,
 )
 
 cc_binary(

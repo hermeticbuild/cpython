@@ -6,6 +6,71 @@ def merge_sysconfig_build_vars(common, platform):
     result.update(platform)
     return result
 
+def _build_details_json(ctx):
+    if ctx.attr.build_details_schema != "1.0":
+        fail("unsupported build-details schema: {}".format(ctx.attr.build_details_schema))
+    required_vars = [
+        "ABIFLAGS",
+        "BINDIR",
+        "EXT_SUFFIX",
+        "INCLUDEPY",
+        "LDLIBRARY",
+        "LIBRARY",
+        "MULTIARCH",
+        "SHLIB_SUFFIX",
+        "VERSION",
+        "prefix",
+    ]
+    for name in required_vars:
+        if name not in ctx.attr.build_vars:
+            fail("build-details generation requires build variable {}".format(name))
+    if ctx.attr.build_vars["LDLIBRARY"] != ctx.attr.build_vars["LIBRARY"]:
+        fail("build-details generation does not describe a dynamic libpython")
+    if ctx.attr.build_vars["ABIFLAGS"]:
+        fail("build-details generation does not describe nonempty ABI flags")
+
+    version_info = {
+        "major": ctx.attr.major,
+        "minor": ctx.attr.minor,
+        "micro": ctx.attr.micro,
+        "releaselevel": ctx.attr.release_level,
+        "serial": ctx.attr.serial,
+    }
+    build_vars = ctx.attr.build_vars
+    return json.encode_indent({
+        "schema_version": ctx.attr.build_details_schema,
+        "base_prefix": build_vars["prefix"],
+        "base_interpreter": "{}/python{}".format(build_vars["BINDIR"], build_vars["VERSION"]),
+        "platform": ctx.attr.platform_tag,
+        "language": {
+            "version": build_vars["VERSION"],
+            "version_info": version_info,
+        },
+        "implementation": {
+            "name": "cpython",
+            "cache_tag": ctx.attr.cache_tag,
+            "version": version_info,
+            "hexversion": ctx.attr.hexversion,
+            "_multiarch": build_vars["MULTIARCH"],
+            "supports_isolated_interpreters": ctx.attr.supports_isolated_interpreters,
+        },
+        "abi": {
+            "flags": [],
+        },
+        "suffixes": {
+            "source": [".py"],
+            "bytecode": [".pyc"],
+            "extensions": [
+                build_vars["EXT_SUFFIX"],
+                ".abi3.so",
+                build_vars["SHLIB_SUFFIX"],
+            ],
+        },
+        "c_api": {
+            "headers": build_vars["INCLUDEPY"],
+        },
+    }) + "\n"
+
 def _cpython_sysconfig_impl(ctx):
     if ctx.attr.platform not in ["darwin", "linux", "windows"]:
         fail("unsupported CPython sysconfig platform: {}".format(ctx.attr.platform))
@@ -59,6 +124,8 @@ def _cpython_sysconfig_impl(ctx):
     inputs = [ctx.file.pyconfig, build_vars]
     outputs = [sysconfig_data]
     makefile_outputs = []
+    build_details_outputs = []
+    sysconfig_json_outputs = []
     if ctx.attr.platform != "windows":
         makefile = ctx.actions.declare_file("Makefile")
         args.add("--makefile-template", ctx.file.makefile_template)
@@ -66,6 +133,24 @@ def _cpython_sysconfig_impl(ctx):
         inputs.append(ctx.file.makefile_template)
         outputs.append(makefile)
         makefile_outputs.append(makefile)
+        if ctx.attr.build_details_schema:
+            sysconfig_json = ctx.actions.declare_file(
+                "runtime/build/lib.{}-{}/_sysconfig_vars__{}_{}.json".format(
+                    ctx.attr.platform_tag,
+                    "{}.{}".format(ctx.attr.major, ctx.attr.minor),
+                    ctx.attr.platform,
+                    ctx.attr.multiarch,
+                ),
+            )
+            build_details = ctx.actions.declare_file("runtime/build-details.json")
+            args.add("--sysconfig-json-out", sysconfig_json)
+            args.add("--major", ctx.attr.major)
+            args.add("--minor", ctx.attr.minor)
+            args.add("--release", ctx.attr.release)
+            ctx.actions.write(build_details, _build_details_json(ctx))
+            outputs.append(sysconfig_json)
+            sysconfig_json_outputs.append(sysconfig_json)
+            build_details_outputs.append(build_details)
     ctx.actions.run(
         executable = ctx.executable._generator,
         arguments = [args],
@@ -76,28 +161,41 @@ def _cpython_sysconfig_impl(ctx):
     )
 
     return [
-        DefaultInfo(files = depset(outputs)),
+        DefaultInfo(files = depset(outputs + build_details_outputs)),
         OutputGroupInfo(
+            build_details = depset(build_details_outputs),
             makefile = depset(makefile_outputs),
             sysconfig_data = depset([sysconfig_data]),
+            sysconfig_json = depset(sysconfig_json_outputs),
         ),
     ]
 
 cpython_sysconfig = rule(
     implementation = _cpython_sysconfig_impl,
     attrs = {
+        "build_details_schema": attr.string(),
         "build_vars": attr.string_dict(mandatory = True),
+        "cache_tag": attr.string(mandatory = True),
+        "hexversion": attr.int(mandatory = True),
         "integer_build_vars": attr.string_list(),
         "makefile_template": attr.label(
             allow_single_file = True,
             mandatory = True,
         ),
+        "major": attr.int(mandatory = True),
+        "micro": attr.int(mandatory = True),
         "multiarch": attr.string(mandatory = True),
+        "minor": attr.int(mandatory = True),
         "platform": attr.string(mandatory = True),
+        "platform_tag": attr.string(mandatory = True),
         "pyconfig": attr.label(
             allow_single_file = True,
             mandatory = True,
         ),
+        "release": attr.string(mandatory = True),
+        "release_level": attr.string(mandatory = True),
+        "serial": attr.int(mandatory = True),
+        "supports_isolated_interpreters": attr.bool(),
         "_generator": attr.label(
             cfg = "exec",
             default = Label("@cpython//python/private/sysconfig:sysconfig_generator"),

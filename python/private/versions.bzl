@@ -21,6 +21,7 @@ def _cpython_release(
         venv_launcher_kind,
         windows_pyconfig_template,
         build_details_schema = None,
+        supports_isolated_interpreters = None,
         release_level = "final",
         serial = 0):
     version_parts = release.split(".")
@@ -67,6 +68,7 @@ def _cpython_release(
                 release = release,
             ),
         ],
+        supports_isolated_interpreters = supports_isolated_interpreters,
         venv_launcher_kind = venv_launcher_kind,
         venv_launcher_runtime_name = "python" if redirect_venv_launcher else "venvlauncher",
         venv_launcher_source = "PC/launcher.c" if redirect_venv_launcher else "PC/venvlauncher.c",
@@ -93,6 +95,13 @@ def _validate_releases(releases):
                 ),
             )
         repository_names[release.repository_name] = minor_version
+
+        if (release.build_details_schema == None) != (release.supports_isolated_interpreters == None):
+            fail(
+                "CPython {} must define build_details_schema and supports_isolated_interpreters together".format(
+                    minor_version,
+                ),
+            )
 
         patch_labels = {}
         for patch in release.patches:
@@ -175,6 +184,7 @@ CPYTHON_RELEASES = _validate_releases({
         venv_launcher_kind = "dedicated",
         windows_pyconfig_template = False,
         build_details_schema = "1.0",
+        supports_isolated_interpreters = True,
     ),
 })
 

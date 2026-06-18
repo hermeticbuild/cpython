@@ -415,6 +415,7 @@ def _cpython_source_repository_impl(repository_ctx):
             "    resource_field3 = {resource_field3},\n" +
             "    serial = {serial},\n" +
             "    soabi = {soabi},\n" +
+            "    supports_isolated_interpreters = {supports_isolated_interpreters},\n" +
             "    venv_launcher_kind = {venv_launcher_kind},\n" +
             "    venv_launcher_runtime_name = {venv_launcher_runtime_name},\n" +
             "    venv_launcher_source = {venv_launcher_source},\n" +
@@ -439,6 +440,7 @@ def _cpython_source_repository_impl(repository_ctx):
             resource_field3 = repository_ctx.attr.resource_field3,
             serial = repository_ctx.attr.serial,
             soabi = repr(repository_ctx.attr.soabi),
+            supports_isolated_interpreters = repr(repository_ctx.attr.supports_isolated_interpreters),
             venv_launcher_kind = repr(repository_ctx.attr.venv_launcher_kind),
             venv_launcher_runtime_name = repr(repository_ctx.attr.venv_launcher_runtime_name),
             venv_launcher_source = repr(repository_ctx.attr.venv_launcher_source),
@@ -476,6 +478,7 @@ cpython_source_repository = repository_rule(
         "sha256": attr.string(mandatory = True),
         "soabi": attr.string(mandatory = True),
         "strip_prefix": attr.string(mandatory = True),
+        "supports_isolated_interpreters": attr.bool(),
         "urls": attr.string_list(mandatory = True),
         "venv_launcher_kind": attr.string(
             mandatory = True,

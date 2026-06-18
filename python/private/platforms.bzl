@@ -1,5 +1,7 @@
 """Exact supported CPython target records."""
 
+MACOSX_DEPLOYMENT_TARGET = "14.0"
+
 CPYTHON_TARGETS = {
     "darwin_arm64": struct(
         config_setting = ":darwin_arm64",
@@ -9,6 +11,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "darwin",
         sysconfig_platform = "darwin",
+        sysconfig_platform_tag = "macosx-{}-arm64".format(MACOSX_DEPLOYMENT_TARGET),
     ),
     "darwin_x86_64": struct(
         config_setting = ":darwin_x86_64",
@@ -18,6 +21,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "darwin",
         sysconfig_platform = "darwin",
+        sysconfig_platform_tag = "macosx-{}-x86_64".format(MACOSX_DEPLOYMENT_TARGET),
     ),
     "linux_arm64": struct(
         config_setting = ":linux_arm64",
@@ -27,6 +31,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "aarch64-linux-gnu",
         sysconfig_platform = "linux",
+        sysconfig_platform_tag = "linux-aarch64",
     ),
     "linux_x86_64": struct(
         config_setting = ":linux_x86_64",
@@ -36,6 +41,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "x86_64-linux-gnu",
         sysconfig_platform = "linux",
+        sysconfig_platform_tag = "linux-x86_64",
     ),
     "windows_arm64": struct(
         config_setting = ":windows_arm64",
@@ -45,6 +51,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "win-arm64",
         sysconfig_platform = "windows",
+        sysconfig_platform_tag = "win-arm64",
     ),
     "windows_x86_64": struct(
         config_setting = ":windows_x86_64",
@@ -54,6 +61,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "win-amd64",
         sysconfig_platform = "windows",
+        sysconfig_platform_tag = "win-amd64",
     ),
 }
 

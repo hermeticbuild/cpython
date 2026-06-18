@@ -62,6 +62,7 @@ def _python_impl(module_ctx):
             sha256 = release.sha256,
             soabi = release.soabi,
             strip_prefix = release.strip_prefix,
+            supports_isolated_interpreters = release.supports_isolated_interpreters or False,
             urls = release.urls,
             venv_launcher_kind = release.venv_launcher_kind,
             venv_launcher_runtime_name = release.venv_launcher_runtime_name,

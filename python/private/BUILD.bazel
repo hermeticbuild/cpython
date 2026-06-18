@@ -4,7 +4,6 @@ exports_files([
     "build_metadata.bzl",
     "bundled_libraries.bzl",
     "deepfreeze.bzl",
-    "generate_sysconfig_json.py",
     "modules.bzl",
     "platforms.bzl",
     "pyconfig.bzl",
@@ -18,12 +17,6 @@ exports_files([
     "windows_bootstrap_support.c",
     "windows_resource.bzl",
 ])
-
-sh_binary(
-    name = "run_target_python",
-    srcs = ["run_target_python.sh"],
-    visibility = ["//visibility:public"],
-)
 
 sh_binary(
     name = "deepfreeze",
