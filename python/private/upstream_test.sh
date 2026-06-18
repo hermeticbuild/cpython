@@ -104,9 +104,13 @@ stage_runtime=false
 if [[ "$test_name" == test_regrtest ]]; then
   stage_runtime=true
 fi
-case "$(uname -s):$test_name" in
-  CYGWIN*:test_distutils | CYGWIN*:test_lib2to3 | MINGW*:test_distutils | MINGW*:test_lib2to3 | MSYS*:test_distutils | MSYS*:test_lib2to3)
-    stage_runtime=true
+case "$(uname -s)" in
+  CYGWIN* | MINGW* | MSYS*)
+    case "$test_name" in
+      test_distutils | test_lib2to3 | test_venv)
+        stage_runtime=true
+        ;;
+    esac
     ;;
 esac
 

@@ -130,7 +130,6 @@ CPYTHON_RELEASES = _validate_releases({
         ] + _COMMON_PATCHES + [
             Label("//python/patches/common:tarfile-mode-capabilities.patch"),
             Label("//python/patches/common:test-dtrace-windows.patch"),
-            Label("//python/patches/common:venv-writable-windows-scripts.patch"),
         ],
         needs_deepfreeze = True,
         venv_launcher_kind = "redirect",
@@ -150,7 +149,6 @@ CPYTHON_RELEASES = _validate_releases({
         ] + _COMMON_PATCHES + [
             Label("//python/patches/common:tarfile-mode-capabilities.patch"),
             Label("//python/patches/common:test-dtrace-windows.patch"),
-            Label("//python/patches/common:venv-writable-windows-scripts.patch"),
         ],
         needs_deepfreeze = True,
         venv_launcher_kind = "redirect",
@@ -164,10 +162,7 @@ CPYTHON_RELEASES = _validate_releases({
             Label("//python/patches/3.13:stopwatch-perf-counter.patch"),
             Label("//python/patches/3.13:multiprocessing-semaphore-value-type.patch"),
             Label("//python/patches/3.13:winapi-previous-token-size.patch"),
-        ] + _COMMON_PATCHES + [
-            Label("//python/patches/common:venv-writable-windows-launchers.patch"),
-            Label("//python/patches/common:venv-writable-windows-scripts.patch"),
-        ],
+        ] + _COMMON_PATCHES,
         needs_deepfreeze = False,
         venv_launcher_kind = "dedicated",
         windows_pyconfig_template = True,
@@ -176,10 +171,7 @@ CPYTHON_RELEASES = _validate_releases({
         release = "3.14.5",
         repository_name = "python3_14",
         sha256 = "7e32597b99e5d9a39abed35de4693fa169df3e5850d4c334337ffd6a19a36db6",
-        patches = _COMMON_PATCHES + [
-            Label("//python/patches/common:venv-writable-windows-launchers.patch"),
-            Label("//python/patches/common:venv-writable-windows-scripts.patch"),
-        ],
+        patches = _COMMON_PATCHES,
         needs_deepfreeze = False,
         venv_launcher_kind = "dedicated",
         windows_pyconfig_template = False,

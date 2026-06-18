@@ -17,8 +17,17 @@ set -e
 # --- end runfiles.bash initialization v3 ---
 
 install_tree="$(rlocation "$1")"
-readonly install_tree
 readonly version="$2"
+
+case "$(uname -s)" in
+  CYGWIN* | MINGW* | MSYS*)
+    writable_install_tree="$TEST_TMPDIR/install"
+    cp -R "$install_tree" "$writable_install_tree"
+    chmod -R u+w "$writable_install_tree"
+    install_tree="$writable_install_tree"
+    ;;
+esac
+readonly install_tree
 
 if [[ -x "$install_tree/bin/python$version" ]]; then
   python="$install_tree/bin/python$version"
