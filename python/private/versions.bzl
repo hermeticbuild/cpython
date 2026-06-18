@@ -118,7 +118,7 @@ CPYTHON_RELEASES = _validate_releases({
         patches = [
             Label("//python/patches/common:getpath-generated-header.patch"),
             Label("//python/patches/3.11:libmpdec-clang-cl.patch"),
-            Label("//python/patches/3.11:multiprocessing-semaphore-value-type.patch"),
+            Label("//python/patches/common:multiprocessing-semaphore-value-type.patch"),
             Label("//python/patches/3.11:pyconfig-clang-cl.patch"),
             Label("//python/patches/3.11:test-ssl-tls-rejection-oserror.patch"),
             Label("//python/patches/3.11:timeval-clang-cl.patch"),
@@ -141,7 +141,7 @@ CPYTHON_RELEASES = _validate_releases({
         patches = [
             Label("//python/patches/common:getpath-generated-header.patch"),
             Label("//python/patches/3.12:multiprocessing-rlock-repr-race.patch"),
-            Label("//python/patches/3.12:multiprocessing-semaphore-value-type.patch"),
+            Label("//python/patches/common:multiprocessing-semaphore-value-type.patch"),
             Label("//python/patches/3.12:test-ssl-tls-rejection-oserror.patch"),
             Label("//python/patches/3.12:winapi-previous-token-size.patch"),
             Label("//python/patches/common:atomic-clang-cl-casts.patch"),
@@ -159,7 +159,7 @@ CPYTHON_RELEASES = _validate_releases({
         sha256 = "2ab91ff401783ccca64f75d10c882e957bdfd60e2bf5a72f8421793729b78a71",
         patches = [
             Label("//python/patches/3.13:stopwatch-perf-counter.patch"),
-            Label("//python/patches/3.13:multiprocessing-semaphore-value-type.patch"),
+            Label("//python/patches/common:multiprocessing-semaphore-value-type.patch"),
             Label("//python/patches/3.13:winapi-previous-token-size.patch"),
         ] + _COMMON_PATCHES,
         needs_deepfreeze = False,

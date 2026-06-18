@@ -1,6 +1,5 @@
 exports_files([
     "libmpdec-clang-cl.patch",
-    "multiprocessing-semaphore-value-type.patch",
     "pyconfig-clang-cl.patch",
     "test-ssl-tls-rejection-oserror.patch",
     "timeval-clang-cl.patch",

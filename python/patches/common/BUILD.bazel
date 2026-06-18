@@ -2,6 +2,7 @@ exports_files([
     "atomic-clang-cl-casts.patch",
     "cgi-nonfork-content-length-test.patch",
     "getpath-generated-header.patch",
+    "multiprocessing-semaphore-value-type.patch",
     "tarfile-mode-capabilities.patch",
     "test-dtrace-windows.patch",
 ])
