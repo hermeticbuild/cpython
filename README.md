@@ -5,6 +5,19 @@ selected interpreter as a Bazel repository. The public API uses a CPython
 minor version such as `3.13`; the generated repository name replaces the dot
 with an underscore, such as `python3_13`.
 
+## Project goal
+
+This project is reproducing the standalone CPython distributions provided by
+[python-build-standalone](https://github.com/astral-sh/python-build-standalone)
+with hermetic Bazel builds. The build uses official CPython source archives,
+target-toolchain checks, and declared Bazel actions; it does not run CPython's
+`configure` script or `make`.
+
+The distribution layout and metadata are still being aligned with
+python-build-standalone. The current `@python3_XX//:python` targets are complete
+build and test runtimes, but they are not yet a compatibility guarantee for
+every python-build-standalone archive path or metadata file.
+
 ## Select CPython versions
 
 Add the module and select each required CPython version in `MODULE.bazel`:
