@@ -116,7 +116,7 @@ CPYTHON_RELEASES = _validate_releases({
         repository_name = "python3_11",
         sha256 = "272179ddd9a2e41a0fc8e42e33dfbdca0b3711aa5abf372d3f2d51543d09b625",
         patches = [
-            Label("//python/patches/3.11:getpath-generated-header.patch"),
+            Label("//python/patches/common:getpath-generated-header.patch"),
             Label("//python/patches/3.11:libmpdec-clang-cl.patch"),
             Label("//python/patches/3.11:multiprocessing-semaphore-value-type.patch"),
             Label("//python/patches/3.11:pyconfig-clang-cl.patch"),
@@ -139,7 +139,7 @@ CPYTHON_RELEASES = _validate_releases({
         repository_name = "python3_12",
         sha256 = "c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684",
         patches = [
-            Label("//python/patches/3.12:getpath-generated-header.patch"),
+            Label("//python/patches/common:getpath-generated-header.patch"),
             Label("//python/patches/3.12:multiprocessing-rlock-repr-race.patch"),
             Label("//python/patches/3.12:multiprocessing-semaphore-value-type.patch"),
             Label("//python/patches/3.12:test-ssl-tls-rejection-oserror.patch"),
