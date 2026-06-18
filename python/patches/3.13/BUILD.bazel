@@ -1,4 +1,3 @@
 exports_files([
     "stopwatch-perf-counter.patch",
-    "winapi-previous-token-size.patch",
 ])

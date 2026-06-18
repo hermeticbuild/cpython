@@ -123,7 +123,7 @@ CPYTHON_RELEASES = _validate_releases({
             Label("//python/patches/3.11:test-ssl-tls-rejection-oserror.patch"),
             Label("//python/patches/3.11:timeval-clang-cl.patch"),
             Label("//python/patches/3.11:tracemalloc-clang-cl-pack.patch"),
-            Label("//python/patches/3.11:winapi-previous-token-size.patch"),
+            Label("//python/patches/common:winapi-previous-token-size.patch"),
             Label("//python/patches/3.11:wincrypt-header.patch"),
             Label("//python/patches/common:atomic-clang-cl-casts.patch"),
         ] + _COMMON_PATCHES + [
@@ -143,7 +143,7 @@ CPYTHON_RELEASES = _validate_releases({
             Label("//python/patches/3.12:multiprocessing-rlock-repr-race.patch"),
             Label("//python/patches/common:multiprocessing-semaphore-value-type.patch"),
             Label("//python/patches/3.12:test-ssl-tls-rejection-oserror.patch"),
-            Label("//python/patches/3.12:winapi-previous-token-size.patch"),
+            Label("//python/patches/common:winapi-previous-token-size.patch"),
             Label("//python/patches/common:atomic-clang-cl-casts.patch"),
         ] + _COMMON_PATCHES + [
             Label("//python/patches/common:tarfile-mode-capabilities.patch"),
@@ -160,7 +160,7 @@ CPYTHON_RELEASES = _validate_releases({
         patches = [
             Label("//python/patches/3.13:stopwatch-perf-counter.patch"),
             Label("//python/patches/common:multiprocessing-semaphore-value-type.patch"),
-            Label("//python/patches/3.13:winapi-previous-token-size.patch"),
+            Label("//python/patches/common:winapi-previous-token-size.patch"),
         ] + _COMMON_PATCHES,
         needs_deepfreeze = False,
         venv_launcher_kind = "dedicated",

@@ -1,5 +1,4 @@
 exports_files([
     "multiprocessing-rlock-repr-race.patch",
     "test-ssl-tls-rejection-oserror.patch",
-    "winapi-previous-token-size.patch",
 ])

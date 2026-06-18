@@ -5,4 +5,5 @@ exports_files([
     "multiprocessing-semaphore-value-type.patch",
     "tarfile-mode-capabilities.patch",
     "test-dtrace-windows.patch",
+    "winapi-previous-token-size.patch",
 ])

@@ -4,6 +4,5 @@ exports_files([
     "test-ssl-tls-rejection-oserror.patch",
     "timeval-clang-cl.patch",
     "tracemalloc-clang-cl-pack.patch",
-    "winapi-previous-token-size.patch",
     "wincrypt-header.patch",
 ])
