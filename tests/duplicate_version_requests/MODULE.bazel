@@ -1,0 +1,21 @@
+module(
+    name = "duplicate_version_requests",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "cpython", version = "0.0.0")
+bazel_dep(name = "python_requester", version = "0.0.0")
+
+local_path_override(
+    module_name = "cpython",
+    path = "../..",
+)
+
+local_path_override(
+    module_name = "python_requester",
+    path = "requester",
+)
+
+python = use_extension("@cpython//python:extensions.bzl", "python")
+python.version(version = "3.14")
+use_repo(python, "python3_14")

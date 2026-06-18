@@ -1,0 +1,11 @@
+module(
+    name = "python_requester",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "cpython", version = "0.0.0")
+
+python = use_extension("@cpython//python:extensions.bzl", "python")
+python.version(version = "3.13")
+python.version(version = "3.14")
+use_repo(python, "python3_13")

@@ -1,8 +1,8 @@
 """Static CPython module manifests for the pinned supported releases."""
 
+load("@cpython//python/private:versions.bzl", "SUPPORTED_PYTHON_VERSIONS")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
-_SUPPORTED_VERSIONS = ["3.11", "3.12", "3.13", "3.14"]
 _SUPPORTED_CATEGORIES = [
     "bootstrap",
     "bundled",
@@ -610,7 +610,7 @@ def _version_modules(version):
         )
     fail("Unsupported CPython version {}; expected one of {}".format(
         repr(version),
-        ", ".join(_SUPPORTED_VERSIONS),
+        ", ".join(SUPPORTED_PYTHON_VERSIONS),
     ))
 
 def cpython_static_module_manifest(version):

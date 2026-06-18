@@ -1,17 +1,16 @@
 """Bundled C libraries shipped in supported CPython release archives."""
 
+load("@cpython//python/private:versions.bzl", "CPYTHON_RELEASES")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
-_SUPPORTED_RELEASES = {
-    "3.11": "3.11.15",
-    "3.11.15": "3.11.15",
-    "3.12": "3.12.13",
-    "3.12.13": "3.12.13",
-    "3.13": "3.13.13",
-    "3.13.13": "3.13.13",
-    "3.14": "3.14.5",
-    "3.14.5": "3.14.5",
-}
+def _supported_releases():
+    result = {}
+    for minor_version, release in CPYTHON_RELEASES.items():
+        result[minor_version] = release.release
+        result[release.release] = release.release
+    return result
+
+_SUPPORTED_RELEASES = _supported_releases()
 
 _EXPAT_HEADERS = [
     "Modules/expat/ascii.h",

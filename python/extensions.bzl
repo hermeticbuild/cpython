@@ -6,56 +6,9 @@ load("//python/private:versions.bzl", "CPYTHON_RELEASES")
 
 _BUILD_FILE = Label("//:cpython.BUILD.bazel")
 _LIBFFI_BUILD_FILE = Label("//:libffi.BUILD.bazel")
-_PATCHES = {
-    "3.11": [
-        Label("//python/patches/3.11:getpath-generated-header.patch"),
-        Label("//python/patches/3.11:libmpdec-clang-cl.patch"),
-        Label("//python/patches/3.11:multiprocessing-semaphore-value-type.patch"),
-        Label("//python/patches/3.11:pyconfig-clang-cl.patch"),
-        Label("//python/patches/3.11:test-ssl-tls-rejection-oserror.patch"),
-        Label("//python/patches/3.11:timeval-clang-cl.patch"),
-        Label("//python/patches/3.11:tracemalloc-clang-cl-pack.patch"),
-        Label("//python/patches/3.11:winapi-previous-token-size.patch"),
-        Label("//python/patches/3.11:wincrypt-header.patch"),
-        Label("//python/patches/common:atomic-clang-cl-casts.patch"),
-        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
-        Label("//python/patches/common:static-windows-winver.patch"),
-        Label("//python/patches/common:tarfile-mode-capabilities.patch"),
-        Label("//python/patches/common:test-dtrace-windows.patch"),
-        Label("//python/patches/common:venv-writable-windows-scripts.patch"),
-    ],
-    "3.12": [
-        Label("//python/patches/3.12:getpath-generated-header.patch"),
-        Label("//python/patches/3.12:multiprocessing-rlock-repr-race.patch"),
-        Label("//python/patches/3.12:multiprocessing-semaphore-value-type.patch"),
-        Label("//python/patches/3.12:test-ssl-tls-rejection-oserror.patch"),
-        Label("//python/patches/3.12:winapi-previous-token-size.patch"),
-        Label("//python/patches/common:atomic-clang-cl-casts.patch"),
-        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
-        Label("//python/patches/common:static-windows-winver.patch"),
-        Label("//python/patches/common:tarfile-mode-capabilities.patch"),
-        Label("//python/patches/common:test-dtrace-windows.patch"),
-        Label("//python/patches/common:venv-writable-windows-scripts.patch"),
-    ],
-    "3.13": [
-        Label("//python/patches/3.13:stopwatch-perf-counter.patch"),
-        Label("//python/patches/3.13:multiprocessing-semaphore-value-type.patch"),
-        Label("//python/patches/3.13:winapi-previous-token-size.patch"),
-        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
-        Label("//python/patches/common:static-windows-winver.patch"),
-        Label("//python/patches/common:venv-writable-windows-launchers.patch"),
-        Label("//python/patches/common:venv-writable-windows-scripts.patch"),
-    ],
-    "3.14": [
-        Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
-        Label("//python/patches/common:static-windows-winver.patch"),
-        Label("//python/patches/common:venv-writable-windows-launchers.patch"),
-        Label("//python/patches/common:venv-writable-windows-scripts.patch"),
-    ],
-}
 
 def _python_impl(module_ctx):
-    requested_by_version = {}
+    requested_versions = {}
     root_requested_versions = {}
 
     for module in module_ctx.modules:
@@ -69,19 +22,11 @@ def _python_impl(module_ctx):
                     ),
                 )
 
-            if version in requested_by_version:
-                fail(
-                    "Python version {version!r} was requested by both module {first!r} and module {second!r}".format(
-                        version = version,
-                        first = requested_by_version[version],
-                        second = module.name,
-                    ),
-                )
-            requested_by_version[version] = module.name
+            requested_versions[version] = True
             if module.is_root:
                 root_requested_versions[version] = True
 
-    if requested_by_version:
+    if requested_versions:
         http_archive(
             name = "cpython_libffi",
             build_file = _LIBFFI_BUILD_FILE,
@@ -95,17 +40,34 @@ def _python_impl(module_ctx):
             urls = ["https://github.com/libffi/libffi/releases/download/v3.4.7/libffi-3.4.7.tar.gz"],
         )
 
-    for version in sorted(requested_by_version.keys()):
+    for version in sorted(requested_versions.keys()):
         release = CPYTHON_RELEASES[version]
         repository_name = release.repository_name
         cpython_source_repository(
             name = repository_name,
             build_file = _BUILD_FILE,
-            patches = _PATCHES[version],
+            build_details_schema = release.build_details_schema or "",
+            cache_tag = release.cache_tag,
+            hexversion = release.hexversion,
+            major = release.major,
+            micro = release.micro,
+            minor = release.minor,
+            minor_version = release.minor_version,
+            needs_deepfreeze = release.needs_deepfreeze,
+            patches = release.patches,
             release = release.release,
+            release_level = release.release_level,
+            resource_field3 = release.resource_field3,
+            serial = release.serial,
             sha256 = release.sha256,
+            soabi = release.soabi,
             strip_prefix = release.strip_prefix,
             urls = release.urls,
+            venv_launcher_kind = release.venv_launcher_kind,
+            venv_launcher_runtime_name = release.venv_launcher_runtime_name,
+            venv_launcher_source = release.venv_launcher_source,
+            venvw_launcher_runtime_name = release.venvw_launcher_runtime_name,
+            windows_pyconfig_template = release.windows_pyconfig_template,
         )
 
     root_direct_deps = [

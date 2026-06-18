@@ -1,6 +1,7 @@
 """Toolchain checks used to generate CPython's pyconfig.h."""
 
 load("@bazel_lib//lib:copy_file.bzl", "copy_file")
+load("@cpython//python/private:versions.bzl", "SUPPORTED_PYTHON_VERSIONS")
 load("@rules_cc_autoconf//autoconf:checks.bzl", "utils")
 load("@rules_cc_autoconf//autoconf:defs.bzl", "autoconf", "autoconf_hdr", "checks", "macros")
 
@@ -1249,18 +1250,19 @@ def _linux_platform_checks(version):
         checks.AC_DEFINE("_XOPEN_SOURCE_EXTENDED", 1),
     ] + ([checks.AC_DEFINE("HAVE_STDARG_PROTOTYPES", 1)] if version == "3.11" else []) + ([checks.AC_DEFINE("_PYTHREAD_NAME_MAXLEN", 15)] if version == "3.14" else []) + _dynamic_loading_checks(version, ["-ldl"]) + _posix_shmem_checks(["-lrt"]) + _pty_checks("pty.h", "utmp.h", ["-lutil"]) + _thread_name_checks(version, ["-lpthread"]) + _linux_filesystem_checks() + _linux_library_checks()
 
-def pyconfig(name, version):
+def pyconfig(name, version, windows_pyconfig_template = False):
     """Generates pyconfig.h with checks executed by the selected C toolchain.
 
     Args:
         name: Target name for the generated header.
         version: Supported CPython minor version.
+        windows_pyconfig_template: Whether the release supplies PC/pyconfig.h.in.
     """
-    if version not in ["3.11", "3.12", "3.13", "3.14"]:
+    if version not in SUPPORTED_PYTHON_VERSIONS:
         fail("unsupported CPython version: {}".format(version))
 
     windows_header = "PC/pyconfig.h"
-    if version == "3.13":
+    if windows_pyconfig_template:
         windows_header = ":" + name + "_windows"
         copy_file(
             name = name + "_windows",

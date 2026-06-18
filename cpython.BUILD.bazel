@@ -5,6 +5,7 @@ load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
+load("@cpython//python/private:platforms.bzl", "cpython_target_field_select", "declare_cpython_target_config_settings")
 load("@cpython//python/private:pyconfig.bzl", "pyconfig")
 load("@cpython//python/private:shared_extensions.bzl", "shared_extensions")
 load("@cpython//python/private:test_programs.bzl", "native_test_programs")
@@ -16,60 +17,14 @@ load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
-load("//bazel:release.bzl", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_RESOURCE_FIELD3", "PYTHON_SOABI", "PYTHON_VERSION")
+load("//bazel:release.bzl", "CPYTHON_RELEASE", "PYTHON_NEEDS_DEEPFREEZE", "PYTHON_RESOURCE_FIELD3", "PYTHON_SOABI", "PYTHON_VERSION")
 
 package(
     default_visibility = ["//visibility:public"],
     features = ["dynamic_link_msvcrt"],
 )
 
-config_setting(
-    name = "darwin_arm64",
-    constraint_values = [
-        "@platforms//cpu:aarch64",
-        "@platforms//os:macos",
-    ],
-)
-
-config_setting(
-    name = "linux_arm64",
-    constraint_values = [
-        "@platforms//cpu:aarch64",
-        "@platforms//os:linux",
-    ],
-)
-
-config_setting(
-    name = "darwin_x86_64",
-    constraint_values = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:macos",
-    ],
-)
-
-config_setting(
-    name = "linux_x86_64",
-    constraint_values = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:linux",
-    ],
-)
-
-config_setting(
-    name = "windows_arm64",
-    constraint_values = [
-        "@platforms//cpu:aarch64",
-        "@platforms//os:windows",
-    ],
-)
-
-config_setting(
-    name = "windows_x86_64",
-    constraint_values = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:windows",
-    ],
-)
+declare_cpython_target_config_settings()
 
 C_STANDARD_COPTS = select({
     ":windows_arm64": ["/std:c11"],
@@ -182,6 +137,7 @@ PYTHON_LINKOPTS = PLATFORM_LINKOPTS + select({
 pyconfig(
     name = "pyconfig_h",
     version = PYTHON_VERSION,
+    windows_pyconfig_template = CPYTHON_RELEASE.windows_pyconfig_template,
 )
 
 copy_file(
@@ -388,22 +344,8 @@ cpython_sysconfig(
         "//conditions:default": [],
     }),
     makefile_template = "Makefile.pre.in",
-    multiarch = select({
-        ":darwin_arm64": "darwin",
-        ":darwin_x86_64": "darwin",
-        ":linux_arm64": "aarch64-linux-gnu",
-        ":linux_x86_64": "x86_64-linux-gnu",
-        ":windows_arm64": "win-arm64",
-        ":windows_x86_64": "win-amd64",
-    }),
-    platform = select({
-        ":darwin_arm64": "darwin",
-        ":darwin_x86_64": "darwin",
-        ":linux_arm64": "linux",
-        ":linux_x86_64": "linux",
-        ":windows_arm64": "windows",
-        ":windows_x86_64": "windows",
-    }),
+    multiarch = cpython_target_field_select("multiarch"),
+    platform = cpython_target_field_select("sysconfig_platform"),
     pyconfig = ":pyconfig_h",
 )
 
@@ -1093,19 +1035,18 @@ cc_binary(
     target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
 )
 
-VENV_LAUNCHER_SOURCE = "PC/launcher.c" if PYTHON_VERSION in ["3.11", "3.12"] else "PC/venvlauncher.c"
-VENV_LAUNCHER_RUNTIME_NAME = "python" if PYTHON_VERSION in ["3.11", "3.12"] else "venvlauncher"
-VENVW_LAUNCHER_RUNTIME_NAME = "pythonw" if PYTHON_VERSION in ["3.11", "3.12"] else "venvwlauncher"
-VENV_LAUNCHER_COMMON_DEFINES = ["VENV_REDIRECT"] if PYTHON_VERSION in ["3.11", "3.12"] else []
+VENV_LAUNCHER_SOURCE = CPYTHON_RELEASE.venv_launcher_source
+VENV_LAUNCHER_RUNTIME_NAME = CPYTHON_RELEASE.venv_launcher_runtime_name
+VENVW_LAUNCHER_RUNTIME_NAME = CPYTHON_RELEASE.venvw_launcher_runtime_name
+VENV_LAUNCHER_REDIRECT = CPYTHON_RELEASE.venv_launcher_kind == "redirect"
+VENV_LAUNCHER_COMMON_DEFINES = ["VENV_REDIRECT"] if VENV_LAUNCHER_REDIRECT else []
 VENV_LAUNCHER_CONSOLE_DEFINES = VENV_LAUNCHER_COMMON_DEFINES + [
     "_CONSOLE",
-] + (["EXENAME=L\\\"python.exe\\\""] if PYTHON_VERSION in ["3.13", "3.14"] else [])
+] + ([] if VENV_LAUNCHER_REDIRECT else ["EXENAME=L\\\"python.exe\\\""])
 VENV_LAUNCHER_WINDOWS_DEFINES = VENV_LAUNCHER_COMMON_DEFINES + [
     "_WINDOWS",
-] + (["EXENAME=L\\\"pythonw.exe\\\""] if PYTHON_VERSION in ["3.13", "3.14"] else [])
-VENV_LAUNCHER_LINKOPTS = (
-    ["advapi32.lib", "version.lib"] if PYTHON_VERSION in ["3.11", "3.12"] else ["pathcch.lib"]
-)
+] + ([] if VENV_LAUNCHER_REDIRECT else ["EXENAME=L\\\"pythonw.exe\\\""])
+VENV_LAUNCHER_LINKOPTS = ["advapi32.lib", "version.lib"] if VENV_LAUNCHER_REDIRECT else ["pathcch.lib"]
 
 cc_binary(
     name = "runtime_stdlib_inputs/venv/scripts/nt/" + VENV_LAUNCHER_RUNTIME_NAME,

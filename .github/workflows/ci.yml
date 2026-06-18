@@ -17,6 +17,10 @@ jobs:
       - name: Check configure audit
         run: tools/configure_check_audit.sh --check
 
+      - name: Check duplicate Python version requests
+        working-directory: tests/duplicate_version_requests
+        run: bazel query --lockfile_mode=error 'set(@python_requester//:python3_13 @python3_14//:python)'
+
   test:
     name: ${{ matrix.system.name }} / CPython ${{ matrix.python.version }}
     runs-on: ${{ matrix.system.runner }}

@@ -1,0 +1,5 @@
+alias(
+    name = "python3_13",
+    actual = "@python3_13//:python",
+    visibility = ["//visibility:public"],
+)

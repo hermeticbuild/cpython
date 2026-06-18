@@ -6,6 +6,7 @@ exports_files([
     "deepfreeze.bzl",
     "generate_sysconfig_json.py",
     "modules.bzl",
+    "platforms.bzl",
     "pyconfig.bzl",
     "pyconfig_contract.c",
     "repositories.bzl",
