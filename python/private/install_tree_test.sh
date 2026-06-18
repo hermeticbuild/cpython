@@ -84,6 +84,7 @@ for test_module in ("_testbuffer", "_testinternalcapi", "_xxtestfuzz"):
 if os.name == "nt":
     import _ctypes
 
+    assert sys.winver.startswith(version), sys.winver
     assert os.path.samefile(pathlib.Path(_ctypes.__file__).parent, root / "DLLs")
     assert (root / "LICENSE.txt").is_file()
     dll_basename = "python" + version.replace(".", "")

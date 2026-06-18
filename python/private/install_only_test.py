@@ -79,6 +79,9 @@ assert os.path.samefile(root, expected), (root, expected)
 assert os.path.samefile(sys.prefix, expected), (sys.prefix, expected)
 assert pathlib.Path(sysconfig.get_path("stdlib")).is_relative_to(expected)
 assert pathlib.Path(sysconfig.get_path("include")).is_relative_to(expected)
+if os.name == "nt":
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    assert sys.winver.startswith(version), sys.winver
 for name in ("_testbuffer", "_testinternalcapi", "_xxtestfuzz"):
     assert importlib.util.find_spec(name) is None, name
 assert ssl.OPENSSL_VERSION

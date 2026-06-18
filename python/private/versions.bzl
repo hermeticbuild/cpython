@@ -9,7 +9,6 @@ _RELEASE_LEVEL_CODES = {
 
 _COMMON_PATCHES = [
     Label("//python/patches/common:cgi-nonfork-content-length-test.patch"),
-    Label("//python/patches/common:static-windows-winver.patch"),
 ]
 
 def _cpython_release(

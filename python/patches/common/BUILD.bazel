@@ -1,7 +1,6 @@
 exports_files([
     "atomic-clang-cl-casts.patch",
     "cgi-nonfork-content-length-test.patch",
-    "static-windows-winver.patch",
     "tarfile-mode-capabilities.patch",
     "test-dtrace-windows.patch",
 ])

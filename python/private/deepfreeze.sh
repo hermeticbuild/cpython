@@ -36,4 +36,4 @@ cp "$absolute_bootstrap" "$stage/_bootstrap_python"
 cp "$absolute_setup_local" "$stage/Modules/Setup.local"
 ln -s "$stdlib" "$stage/Lib"
 
-"$stage/_bootstrap_python" -B "$absolute_deepfreeze" "$@" -o "$absolute_output"
+"$stage/_bootstrap_python" -B -S "$absolute_deepfreeze" "$@" -o "$absolute_output"
