@@ -1,0 +1,12 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 3ddc61e..46728f6 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -2,2 +2,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+ load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+ load("@rules_cc//cc:cc_library.bzl", "cc_library")
++exports_files(
++    ["LICENSE"],
++    visibility = ["//visibility:public"],
++)
++

@@ -1,0 +1,11 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index b244d34..0ad3409 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -183,1 +183,6 @@ load(
+ package(default_visibility = ["//:__subpackages__"])
++exports_files(
++    ["LICENSE.txt"],
++    visibility = ["//visibility:public"],
++)
++

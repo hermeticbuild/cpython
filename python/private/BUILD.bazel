@@ -1,3 +1,4 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
 exports_files([
@@ -21,5 +22,11 @@ exports_files([
 sh_binary(
     name = "deepfreeze",
     srcs = ["deepfreeze.sh"],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "concat_files",
+    srcs = ["concat_files.c"],
     visibility = ["//visibility:public"],
 )

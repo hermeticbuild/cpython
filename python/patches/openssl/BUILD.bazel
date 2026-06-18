@@ -1,1 +1,4 @@
-exports_files(["windows-defines.patch"])
+exports_files([
+    "export-license.patch",
+    "windows-defines.patch",
+])

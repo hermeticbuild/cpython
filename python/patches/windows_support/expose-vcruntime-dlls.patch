@@ -1,0 +1,60 @@
+diff --git a/windows/private/extensions/msvc_runtime.bzl b/windows/private/extensions/msvc_runtime.bzl
+index 17514ac..41737f1 100644
+--- a/windows/private/extensions/msvc_runtime.bzl
++++ b/windows/private/extensions/msvc_runtime.bzl
+@@ -15,3 +15,7 @@ _ARCH_TO_MSVC_COMPONENT = {
+     "x64": "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+     "x86": "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+ }
++_ARCH_TO_MSVC_REDIST_PACKAGE = {
++    "arm64": "Microsoft.VisualCpp.CRT.Redist.ARM64",
++    "x64": "Microsoft.VisualCpp.CRT.Redist.X64",
++}
+@@ -141,3 +145,8 @@ def _collect_vctools_packages(installer_manifest, architectures):
+         if component not in packages_by_id:
+             fail("failed to find Visual Studio package {} in installer manifest".format(component))
+         pending.append(component)
++        redist_package = _ARCH_TO_MSVC_REDIST_PACKAGE.get(arch)
++        if redist_package != None:
++            if redist_package not in packages_by_id:
++                fail("failed to find Visual Studio package {} in installer manifest".format(redist_package))
++            pending.append(redist_package)
+@@ -198,6 +198,6 @@ def _keep_exposed_runtime_files(repository_ctx, sysroot_dir, msvc_version, archi
+     _keep_only_children(repository_ctx, sysroot_path, ["Contents"])
+     _keep_only_children(repository_ctx, contents_dir, ["VC"])
+-    _keep_only_children(repository_ctx, vc_dir, ["Tools"])
++    _keep_only_children(repository_ctx, vc_dir, ["Redist", "Tools"])
+     _keep_only_children(repository_ctx, tools_dir, ["MSVC"])
+     _keep_only_children(repository_ctx, msvc_dir, [msvc_version])
+     _keep_only_children(
+diff --git a/windows/private/extensions/msvc_runtime.BUILD.bazel b/windows/private/extensions/msvc_runtime.BUILD.bazel
+index 9cc2dad..d0f7e90 100644
+--- a/windows/private/extensions/msvc_runtime.BUILD.bazel
++++ b/windows/private/extensions/msvc_runtime.BUILD.bazel
+@@ -81,2 +81,26 @@ alias(
+     }),
+ )
++filegroup(
++    name = "vcruntime_dlls_arm64",
++    srcs = glob([
++        "__MSVC_RUNTIME_DIR__/Contents/VC/Redist/MSVC/*/arm64/Microsoft.VC*.CRT/vcruntime140.dll",
++        "__MSVC_RUNTIME_DIR__/Contents/VC/Redist/MSVC/*/arm64/Microsoft.VC*.CRT/vcruntime140_1.dll",
++    ]),
++)
++
++filegroup(
++    name = "vcruntime_dlls_x64",
++    srcs = glob([
++        "__MSVC_RUNTIME_DIR__/Contents/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT/vcruntime140.dll",
++        "__MSVC_RUNTIME_DIR__/Contents/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT/vcruntime140_1.dll",
++    ]),
++)
++
++alias(
++    name = "vcruntime_dlls",
++    actual = select({
++        ":windows_aarch64": ":vcruntime_dlls_arm64",
++        "//conditions:default": ":vcruntime_dlls_x64",
++    }),
++)
++
