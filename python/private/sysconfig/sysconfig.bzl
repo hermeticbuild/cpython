@@ -11,21 +11,14 @@ def _build_details_json(ctx):
         fail("unsupported build-details schema: {}".format(ctx.attr.build_details_schema))
     required_vars = [
         "ABIFLAGS",
-        "BINDIR",
         "EXT_SUFFIX",
-        "INCLUDEPY",
-        "LDLIBRARY",
-        "LIBRARY",
         "MULTIARCH",
         "SHLIB_SUFFIX",
         "VERSION",
-        "prefix",
     ]
     for name in required_vars:
         if name not in ctx.attr.build_vars:
             fail("build-details generation requires build variable {}".format(name))
-    if ctx.attr.build_vars["LDLIBRARY"] != ctx.attr.build_vars["LIBRARY"]:
-        fail("build-details generation does not describe a dynamic libpython")
     if ctx.attr.build_vars["ABIFLAGS"]:
         fail("build-details generation does not describe nonempty ABI flags")
 
@@ -39,8 +32,8 @@ def _build_details_json(ctx):
     build_vars = ctx.attr.build_vars
     return json.encode_indent({
         "schema_version": ctx.attr.build_details_schema,
-        "base_prefix": build_vars["prefix"],
-        "base_interpreter": "{}/python{}".format(build_vars["BINDIR"], build_vars["VERSION"]),
+        "base_prefix": "../..",
+        "base_interpreter": "./bin/python{}".format(build_vars["VERSION"]),
         "platform": ctx.attr.platform_tag,
         "language": {
             "version": build_vars["VERSION"],
@@ -56,6 +49,8 @@ def _build_details_json(ctx):
         },
         "abi": {
             "flags": [],
+            "extension_suffix": build_vars["EXT_SUFFIX"],
+            "stable_abi_suffix": ".abi3.so",
         },
         "suffixes": {
             "source": [".py"],
@@ -67,7 +62,7 @@ def _build_details_json(ctx):
             ],
         },
         "c_api": {
-            "headers": build_vars["INCLUDEPY"],
+            "headers": "./include/python{}".format(build_vars["VERSION"]),
         },
     }) + "\n"
 
@@ -142,7 +137,7 @@ def _cpython_sysconfig_impl(ctx):
                     ctx.attr.multiarch,
                 ),
             )
-            build_details = ctx.actions.declare_file("runtime/build-details.json")
+            build_details = ctx.actions.declare_file("install_metadata/build-details.json")
             args.add("--sysconfig-json-out", sysconfig_json)
             args.add("--major", ctx.attr.major)
             args.add("--minor", ctx.attr.minor)

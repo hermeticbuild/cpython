@@ -5,6 +5,30 @@ load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 _VERSIONED_WINDOWS_IMPORT = "versioned"
 _STABLE_WINDOWS_IMPORT = "stable"
 
+_INSTALL_ONLY_EXCLUDED_EXTENSIONS = [
+    "_ctypes_test",
+    "_testbuffer",
+    "_testcapi",
+    "_testclinic",
+    "_testclinic_limited",
+    "_testconsole",
+    "_testembed",
+    "_testexternalinspection",
+    "_testimportmultiple",
+    "_testinternalcapi",
+    "_testlimitedcapi",
+    "_testmultiphase",
+    "_testsinglephase",
+    "xxlimited",
+    "xxlimited_35",
+]
+
+def _install_only_extension(label, filename):
+    return struct(
+        filename = filename,
+        label = label,
+    )
+
 _COMMON_EXTENSIONS = {
     # PC/dl_nt.c and Modules/_ctypes/callbacks.c both define DllMain.
     # CPython PCbuild places them in pythonXY.dll and _ctypes.pyd, respectively.
@@ -285,7 +309,9 @@ def shared_extensions(
         ),
     ]
     posix_outputs = {target.name: [] for target in posix_targets}
+    install_only_posix_outputs = {target.name: [] for target in posix_targets}
     windows_outputs = [":sqlite3_dll"]
+    install_only_windows_outputs = [_install_only_extension(":sqlite3_dll", "sqlite3.dll")]
     for module_name in sorted(extensions):
         extension = extensions[module_name]
         extension_sources = _extension_sources(module_name, extension, module_sources, version)
@@ -306,6 +332,8 @@ def shared_extensions(
                     target_compatible_with = posix_target.compatibility,
                 )
                 posix_outputs[posix_target.name].append(":" + output)
+                if module_name not in _INSTALL_ONLY_EXCLUDED_EXTENSIONS:
+                    install_only_posix_outputs[posix_target.name].append(_install_only_extension(":" + output, output))
 
         if extension.get("windows", True):
             windows_output = module_name + ".pyd"
@@ -324,6 +352,8 @@ def shared_extensions(
                 extra_local_defines = local_defines,
             )
             windows_outputs.append(":" + windows_output)
+            if module_name not in _INSTALL_ONLY_EXCLUDED_EXTENSIONS:
+                install_only_windows_outputs.append(_install_only_extension(":" + windows_output, windows_output))
 
     testconsole = "_testconsole.pyd"
     testconsole_sources = _extension_sources("_testconsole", {}, module_sources, version)
@@ -342,6 +372,11 @@ def shared_extensions(
     return struct(
         darwin_arm64 = posix_outputs["darwin"],
         darwin_x86_64 = posix_outputs["darwin"],
+        install_only_darwin_arm64 = install_only_posix_outputs["darwin"],
+        install_only_darwin_x86_64 = install_only_posix_outputs["darwin"],
+        install_only_linux_arm64 = install_only_posix_outputs["linux_arm64"],
+        install_only_linux_x86_64 = install_only_posix_outputs["linux_x86_64"],
+        install_only_windows = install_only_windows_outputs,
         linux_arm64 = posix_outputs["linux_arm64"],
         linux_x86_64 = posix_outputs["linux_x86_64"],
         windows = windows_outputs,

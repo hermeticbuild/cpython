@@ -5,7 +5,7 @@ load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 def cpython_build_metadata(version):
     """Defines CPython 3.14 runtime build metadata targets."""
     if version != "3.14":
-        return struct(runtime_data = [], test_data = [])
+        return struct(install_data = [], runtime_data = [], test_data = [])
 
     posix_target_compatible_with = select({
         "@platforms//os:linux": [],
@@ -14,7 +14,7 @@ def cpython_build_metadata(version):
     })
 
     native.filegroup(
-        name = "runtime_build_details",
+        name = "install_build_details",
         srcs = [":generated_sysconfig"],
         output_group = "build_details",
         target_compatible_with = posix_target_compatible_with,
@@ -38,21 +38,36 @@ def cpython_build_metadata(version):
         target_compatible_with = posix_target_compatible_with,
     )
 
+    install_data = select({
+        "@platforms//os:linux": [
+            ":install_build_details",
+            ":runtime_sysconfig_json",
+        ],
+        "@platforms//os:macos": [
+            ":install_build_details",
+            ":runtime_sysconfig_json",
+        ],
+        "//conditions:default": [],
+    })
+
     return struct(
+        install_data = install_data,
         runtime_data = select({
             "@platforms//os:linux": [
-                ":runtime_build_details",
                 ":runtime_sysconfig_json",
             ],
             "@platforms//os:macos": [
-                ":runtime_build_details",
                 ":runtime_sysconfig_json",
             ],
             "//conditions:default": [],
         }),
         test_data = select({
-            "@platforms//os:linux": [":runtime_test_tools"],
-            "@platforms//os:macos": [":runtime_test_tools"],
+            "@platforms//os:linux": [
+                ":runtime_test_tools",
+            ],
+            "@platforms//os:macos": [
+                ":runtime_test_tools",
+            ],
             "//conditions:default": [],
         }),
     )

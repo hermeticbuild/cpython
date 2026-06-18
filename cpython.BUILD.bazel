@@ -4,6 +4,8 @@ load("@bazel_lib//lib:run_binary.bzl", "run_binary")
 load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
+load("@cpython//python/private:install_only.bzl", "cpython_install_only")
+load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
 load("@cpython//python/private:platforms.bzl", "MACOSX_DEPLOYMENT_TARGET", "cpython_target_field_select", "declare_cpython_target_config_settings")
 load("@cpython//python/private:pyconfig.bzl", "pyconfig")
@@ -646,6 +648,23 @@ STATIC_MODULES = declare_cpython_static_modules(
     module_libraries = BOOTSTRAP_MODULES.module_libraries,
 )
 
+INSTALL_STATIC_MODULES = declare_cpython_static_modules(
+    name = "python_install_static_modules",
+    version = PYTHON_VERSION,
+    module_sources = CPYTHON_MODULE_SOURCES,
+    categories = [
+        "bootstrap",
+        "bundled",
+        "posix",
+        "stdlib",
+    ],
+    copts = RUNTIME_MODULE_COPTS,
+    deps = [":headers"],
+    exclude_modules = SHARED_MODULE_NAMES,
+    module_libraries = STATIC_MODULES.module_libraries,
+    visibility = ["//visibility:private"],
+)
+
 cc_library(
     name = "python_ceval",
     srcs = ["Python/ceval.c"],
@@ -878,6 +897,15 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "python_install_runtime_core",
+    deps = [
+        ":python_core_no_frozen",
+        INSTALL_STATIC_MODULES.library,
+    ],
+    visibility = ["//visibility:private"],
+)
+
 cc_shared_library(
     name = "python_dll",
     deps = [
@@ -916,6 +944,42 @@ cc_import(
         ":windows_x86_64": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
+)
+
+cc_shared_library(
+    name = "python_install_dll",
+    deps = [
+        ":python_core_no_frozen",
+        ":python_frozen",
+        INSTALL_STATIC_MODULES.library,
+    ],
+    features = ["no_windows_export_all_symbols"],
+    shared_lib_name = "install_runtime/" + PYTHON_DLL,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+    user_link_flags = WINDOWS_LINK_LIBRARIES + ["/OPT:REF,NOICF"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "python_install_dll_interface_library",
+    srcs = [":python_install_dll"],
+    output_group = "interface_library",
+    visibility = ["//visibility:private"],
+)
+
+copy_file(
+    name = "python_install_import_library",
+    src = ":python_install_dll_interface_library",
+    out = "install_runtime/libs/" + PYTHON_IMPORT_LIBRARY,
+    visibility = ["//visibility:private"],
+)
+
+cc_import(
+    name = "python_install_dll_import",
+    interface_library = ":python_install_import_library",
+    shared_library = ":python_install_dll",
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+    visibility = ["//visibility:private"],
 )
 
 cc_library(
@@ -1270,9 +1334,102 @@ cc_binary(
     }),
 )
 
+cc_binary(
+    name = "install_runtime/python",
+    srcs = ["Programs/python.c"],
+    additional_linker_inputs = select({
+        ":windows_arm64": [":python_exe_resource"],
+        ":windows_x86_64": [":python_exe_resource"],
+        "//conditions:default": [],
+    }),
+    copts = CORE_COPTS,
+    deps = select({
+        ":windows_arm64": [
+            ":headers",
+            ":python_install_dll_import",
+        ],
+        ":windows_x86_64": [
+            ":headers",
+            ":python_install_dll_import",
+        ],
+        "//conditions:default": [
+            ":headers",
+            ":python_frozen",
+            ":python_install_runtime_core",
+        ],
+    }),
+    linkopts = PYTHON_LINKOPTS + select({
+        ":windows_arm64": [
+            "/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY,
+            "$(location :python_exe_resource)",
+        ],
+        ":windows_x86_64": [
+            "/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY,
+            "$(location :python_exe_resource)",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:private"],
+)
+
+cc_binary(
+    name = "install_runtime/pythonw",
+    srcs = ["PC/WinMain.c"],
+    additional_linker_inputs = [":pythonw_exe_resource"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":headers",
+        ":python_install_dll_import",
+    ],
+    features = ["-linker_subsystem_flag"],
+    linkopts = PYTHON_LINKOPTS + [
+        "/NODEFAULTLIB:" + PYTHON_IMPORT_LIBRARY,
+        "/SUBSYSTEM:WINDOWS",
+        "$(location :pythonw_exe_resource)",
+    ],
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+    visibility = ["//visibility:private"],
+)
+
 alias(
     name = "python",
     actual = ":runtime/python",
+)
+
+WINDOWS_LICENSE_INPUTS = [
+    "LICENSE",
+    "PC/crtlicense.txt",
+    "@bzip2//:LICENSE",
+    "@cpython_libffi//:LICENSE",
+    "@openssl//:LICENSE.txt",
+    "@xz//:COPYING",
+    "@zlib//:LICENSE",
+]
+
+run_binary(
+    name = "install_windows_license",
+    srcs = WINDOWS_LICENSE_INPUTS,
+    outs = ["install_metadata/windows/LICENSE.txt"],
+    args = ["$(execpath install_metadata/windows/LICENSE.txt)"] + [
+        "$(execpath {})".format(license_file)
+        for license_file in WINDOWS_LICENSE_INPUTS
+    ],
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
+    tool = "@cpython//python/private:concat_files",
+)
+
+cpython_install_tree(
+    version = PYTHON_VERSION,
+    extensions = SHARED_EXTENSIONS,
+    install_metadata = BUILD_METADATA.install_data,
+    windows_venv_launchers = [
+        ":runtime_stdlib_inputs/venv/scripts/nt/" + VENV_LAUNCHER_RUNTIME_NAME,
+        ":runtime_stdlib_inputs/venv/scripts/nt/" + VENVW_LAUNCHER_RUNTIME_NAME,
+    ],
+)
+
+cpython_install_only(
+    version = PYTHON_VERSION,
 )
 
 copy_to_directory(

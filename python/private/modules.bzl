@@ -603,7 +603,7 @@ def declare_cpython_static_modules(
         copts: C options required by every module. Do not define Py_BUILD_CORE.
         categories: Optional subset of bootstrap, bundled, posix, stdlib, and test.
         exclude_modules: Module names intentionally omitted by the caller.
-        module_libraries: Existing module-name-to-label mappings to reuse.
+        module_libraries: Existing module-name-to-label mappings to reuse. Entries for modules outside categories are ignored.
         visibility: Visibility for the aggregate and individual module libraries.
         tags: Tags for every generated target.
 
@@ -625,10 +625,6 @@ def declare_cpython_static_modules(
         module.name: _target_name(name, module.name)
         for module in modules
     }
-    selected_names = {module.name: True for module in modules}
-    for module_name in module_libraries:
-        if module_name not in selected_names:
-            fail("Cannot override unselected CPython module {!r}".format(module_name))
     selected_libraries = {
         module.name: module_libraries.get(
             module.name,
