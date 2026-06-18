@@ -6,15 +6,18 @@ def merge_sysconfig_build_vars(common, platform):
     result.update(platform)
     return result
 
-def _build_details_json(ctx):
+def _build_details_json(ctx, base_prefix, base_interpreter, headers):
     if ctx.attr.build_details_schema != "1.0":
         fail("unsupported build-details schema: {}".format(ctx.attr.build_details_schema))
     required_vars = [
         "ABIFLAGS",
+        "BINDIR",
         "EXT_SUFFIX",
+        "INCLUDEPY",
         "MULTIARCH",
         "SHLIB_SUFFIX",
         "VERSION",
+        "prefix",
     ]
     for name in required_vars:
         if name not in ctx.attr.build_vars:
@@ -32,8 +35,8 @@ def _build_details_json(ctx):
     build_vars = ctx.attr.build_vars
     return json.encode_indent({
         "schema_version": ctx.attr.build_details_schema,
-        "base_prefix": "../..",
-        "base_interpreter": "./bin/python{}".format(build_vars["VERSION"]),
+        "base_prefix": base_prefix,
+        "base_interpreter": base_interpreter,
         "platform": ctx.attr.platform_tag,
         "language": {
             "version": build_vars["VERSION"],
@@ -62,7 +65,7 @@ def _build_details_json(ctx):
             ],
         },
         "c_api": {
-            "headers": "./include/python{}".format(build_vars["VERSION"]),
+            "headers": headers,
         },
     }) + "\n"
 
@@ -119,7 +122,8 @@ def _cpython_sysconfig_impl(ctx):
     inputs = [ctx.file.pyconfig, build_vars]
     outputs = [sysconfig_data]
     makefile_outputs = []
-    build_details_outputs = []
+    install_build_details_outputs = []
+    runtime_build_details_outputs = []
     sysconfig_json_outputs = []
     if ctx.attr.platform != "windows":
         makefile = ctx.actions.declare_file("Makefile")
@@ -137,15 +141,34 @@ def _cpython_sysconfig_impl(ctx):
                     ctx.attr.multiarch,
                 ),
             )
-            build_details = ctx.actions.declare_file("install_metadata/build-details.json")
+            install_build_details = ctx.actions.declare_file("install_metadata/build-details.json")
+            runtime_build_details = ctx.actions.declare_file("runtime/build-details.json")
             args.add("--sysconfig-json-out", sysconfig_json)
             args.add("--major", ctx.attr.major)
             args.add("--minor", ctx.attr.minor)
             args.add("--release", ctx.attr.release)
-            ctx.actions.write(build_details, _build_details_json(ctx))
+            ctx.actions.write(
+                install_build_details,
+                _build_details_json(
+                    ctx,
+                    base_prefix = "../..",
+                    base_interpreter = "./bin/python{}".format(ctx.attr.build_vars["VERSION"]),
+                    headers = "./include/python{}".format(ctx.attr.build_vars["VERSION"]),
+                ),
+            )
+            ctx.actions.write(
+                runtime_build_details,
+                _build_details_json(
+                    ctx,
+                    base_prefix = ctx.attr.build_vars["prefix"],
+                    base_interpreter = "{}/python{}".format(ctx.attr.build_vars["BINDIR"], ctx.attr.build_vars["VERSION"]),
+                    headers = ctx.attr.build_vars["INCLUDEPY"],
+                ),
+            )
             outputs.append(sysconfig_json)
             sysconfig_json_outputs.append(sysconfig_json)
-            build_details_outputs.append(build_details)
+            install_build_details_outputs.append(install_build_details)
+            runtime_build_details_outputs.append(runtime_build_details)
     ctx.actions.run(
         executable = ctx.executable._generator,
         arguments = [args],
@@ -156,10 +179,11 @@ def _cpython_sysconfig_impl(ctx):
     )
 
     return [
-        DefaultInfo(files = depset(outputs + build_details_outputs)),
+        DefaultInfo(files = depset(outputs + install_build_details_outputs + runtime_build_details_outputs)),
         OutputGroupInfo(
-            build_details = depset(build_details_outputs),
+            install_build_details = depset(install_build_details_outputs),
             makefile = depset(makefile_outputs),
+            runtime_build_details = depset(runtime_build_details_outputs),
             sysconfig_data = depset([sysconfig_data]),
             sysconfig_json = depset(sysconfig_json_outputs),
         ),

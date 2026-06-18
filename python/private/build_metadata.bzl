@@ -16,7 +16,14 @@ def cpython_build_metadata(version):
     native.filegroup(
         name = "install_build_details",
         srcs = [":generated_sysconfig"],
-        output_group = "build_details",
+        output_group = "install_build_details",
+        target_compatible_with = posix_target_compatible_with,
+    )
+
+    native.filegroup(
+        name = "runtime_build_details",
+        srcs = [":generated_sysconfig"],
+        output_group = "runtime_build_details",
         target_compatible_with = posix_target_compatible_with,
     )
 
@@ -54,9 +61,11 @@ def cpython_build_metadata(version):
         install_data = install_data,
         runtime_data = select({
             "@platforms//os:linux": [
+                ":runtime_build_details",
                 ":runtime_sysconfig_json",
             ],
             "@platforms//os:macos": [
+                ":runtime_build_details",
                 ":runtime_sysconfig_json",
             ],
             "//conditions:default": [],
