@@ -123,12 +123,6 @@ _VERSION_EXTENSIONS = {
     },
 }
 
-_POSIX_COMPATIBILITY = select({
-    "@platforms//os:linux": [],
-    "@platforms//os:macos": [],
-    "//conditions:default": ["@platforms//:incompatible"],
-})
-
 _WINDOWS_COMPATIBILITY = select({
     "@platforms//os:windows": [],
     "//conditions:default": ["@platforms//:incompatible"],
@@ -262,8 +256,35 @@ def shared_extensions(
 
     extensions = dict(_COMMON_EXTENSIONS)
     extensions.update(_VERSION_EXTENSIONS[version])
+    if version == "3.14":
+        extensions["_asyncio"] = {
+            "core_module": True,
+        }
 
-    common_outputs = []
+    posix_targets = [
+        struct(
+            compatibility = ["@platforms//os:macos"],
+            name = "darwin",
+            suffix = ".{}-darwin.so".format(soabi),
+        ),
+        struct(
+            compatibility = [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux",
+            ],
+            name = "linux_arm64",
+            suffix = ".{}-aarch64-linux-gnu.so".format(soabi),
+        ),
+        struct(
+            compatibility = [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux",
+            ],
+            name = "linux_x86_64",
+            suffix = ".{}-x86_64-linux-gnu.so".format(soabi),
+        ),
+    ]
+    posix_outputs = {target.name: [] for target in posix_targets}
     windows_outputs = [":sqlite3_dll"]
     for module_name in sorted(extensions):
         extension = extensions[module_name]
@@ -273,17 +294,18 @@ def shared_extensions(
             extension.get("local_defines_by_version", {}).get(version, [])
         )
         if extension.get("posix", True):
-            output = module_name + ".so"
-            _shared_extension(
-                name = output,
-                srcs = extension_sources.posix,
-                headers = headers,
-                core_module = extension["core_module"],
-                deps = extension.get("deps", []),
-                local_defines = local_defines,
-                target_compatible_with = _POSIX_COMPATIBILITY,
-            )
-            common_outputs.append(":" + output)
+            for posix_target in posix_targets:
+                output = module_name + posix_target.suffix
+                _shared_extension(
+                    name = output,
+                    srcs = extension_sources.posix,
+                    headers = headers,
+                    core_module = extension["core_module"],
+                    deps = extension.get("deps", []),
+                    local_defines = local_defines,
+                    target_compatible_with = posix_target.compatibility,
+                )
+                posix_outputs[posix_target.name].append(":" + output)
 
         if extension.get("windows", True):
             windows_output = module_name + ".pyd"
@@ -303,58 +325,6 @@ def shared_extensions(
             )
             windows_outputs.append(":" + windows_output)
 
-    darwin_outputs = common_outputs
-    linux_arm64_outputs = common_outputs
-    linux_x86_64_outputs = common_outputs
-    if version == "3.14":
-        asyncio_sources = _extension_sources("_asyncio", {}, module_sources, version)
-        asyncio_darwin = "_asyncio.%s-darwin.so" % soabi
-        asyncio_linux_arm64 = "_asyncio.%s-aarch64-linux-gnu.so" % soabi
-        asyncio_linux_x86_64 = "_asyncio.%s-x86_64-linux-gnu.so" % soabi
-        _shared_extension(
-            name = asyncio_darwin,
-            srcs = asyncio_sources.posix,
-            headers = headers,
-            core_module = True,
-            target_compatible_with = ["@platforms//os:macos"],
-        )
-        _shared_extension(
-            name = asyncio_linux_arm64,
-            srcs = asyncio_sources.posix,
-            headers = headers,
-            core_module = True,
-            target_compatible_with = [
-                "@platforms//cpu:aarch64",
-                "@platforms//os:linux",
-            ],
-        )
-        _shared_extension(
-            name = asyncio_linux_x86_64,
-            srcs = asyncio_sources.posix,
-            headers = headers,
-            core_module = True,
-            target_compatible_with = [
-                "@platforms//cpu:x86_64",
-                "@platforms//os:linux",
-            ],
-        )
-        darwin_outputs = common_outputs + [":" + asyncio_darwin]
-        linux_arm64_outputs = common_outputs + [":" + asyncio_linux_arm64]
-        linux_x86_64_outputs = common_outputs + [":" + asyncio_linux_x86_64]
-
-        asyncio_windows = "_asyncio.pyd"
-        _windows_extension(
-            name = asyncio_windows,
-            srcs = asyncio_sources.windows,
-            headers = headers,
-            core_module = True,
-            python_import = python_import,
-            python_import_library = python_import_library,
-            stable_import = stable_import,
-            windows_imports = [_VERSIONED_WINDOWS_IMPORT],
-        )
-        windows_outputs.append(":" + asyncio_windows)
-
     testconsole = "_testconsole.pyd"
     testconsole_sources = _extension_sources("_testconsole", {}, module_sources, version)
     _windows_extension(
@@ -370,9 +340,9 @@ def shared_extensions(
     windows_outputs.append(":" + testconsole)
 
     return struct(
-        darwin_arm64 = darwin_outputs,
-        darwin_x86_64 = darwin_outputs,
-        linux_arm64 = linux_arm64_outputs,
-        linux_x86_64 = linux_x86_64_outputs,
+        darwin_arm64 = posix_outputs["darwin"],
+        darwin_x86_64 = posix_outputs["darwin"],
+        linux_arm64 = posix_outputs["linux_arm64"],
+        linux_x86_64 = posix_outputs["linux_x86_64"],
         windows = windows_outputs,
     )
