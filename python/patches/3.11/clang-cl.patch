@@ -1,3 +1,7 @@
+Backport the applicable clang-cl fixes from CPython commit
+737d367b1f4bad76914173a64d6bbe19a984cd5f (GH-101352).
+
+diff --git a/PC/pyconfig.h b/PC/pyconfig.h
 --- a/PC/pyconfig.h
 +++ b/PC/pyconfig.h
 @@ -76,30 +76,26 @@ WIN32 is still required for the locale module.
@@ -77,3 +81,31 @@
  #define PYD_PLATFORM_TAG "win32"
  #elif defined(_M_ARM)
  #define COMPILER _Py_PASTE_VERSION("32 bit (ARM)")
+diff --git a/Modules/_decimal/libmpdec/mpdecimal.c b/Modules/_decimal/libmpdec/mpdecimal.c
+--- a/Modules/_decimal/libmpdec/mpdecimal.c
++++ b/Modules/_decimal/libmpdec/mpdecimal.c
+@@ -79,0 +80,6 @@
++/* ClangCL claims to support 128-bit int, but doesn't */
++#if defined(__SIZEOF_INT128__) && defined(__clang__) && defined(_MSC_VER)
++#undef __SIZEOF_INT128__
++#endif
++
++
+diff --git a/Include/cpython/pytime.h b/Include/cpython/pytime.h
+--- a/Include/cpython/pytime.h
++++ b/Include/cpython/pytime.h
+@@ -56,0 +57,4 @@
++#if defined(__clang__) || defined(_MSC_VER)
++struct timeval;
++#endif
++
+diff --git a/Modules/_tracemalloc.c b/Modules/_tracemalloc.c
+--- a/Modules/_tracemalloc.c
++++ b/Modules/_tracemalloc.c
+@@ -62,0 +63,3 @@
++#ifdef _MSC_VER
++#pragma pack(push, 4)
++#endif
+@@ -65,2 +68,0 @@
+-#elif defined(_MSC_VER)
+-#pragma pack(push, 4)

@@ -117,12 +117,9 @@ CPYTHON_RELEASES = _validate_releases({
         sha256 = "272179ddd9a2e41a0fc8e42e33dfbdca0b3711aa5abf372d3f2d51543d09b625",
         patches = [
             Label("//python/patches/common:getpath-generated-header.patch"),
-            Label("//python/patches/3.11:libmpdec-clang-cl.patch"),
+            Label("//python/patches/3.11:clang-cl.patch"),
             Label("//python/patches/common:multiprocessing-semaphore-value-type.patch"),
-            Label("//python/patches/3.11:pyconfig-clang-cl.patch"),
             Label("//python/patches/3.11:test-ssl-tls-rejection-oserror.patch"),
-            Label("//python/patches/3.11:timeval-clang-cl.patch"),
-            Label("//python/patches/3.11:tracemalloc-clang-cl-pack.patch"),
             Label("//python/patches/common:winapi-previous-token-size.patch"),
             Label("//python/patches/3.11:wincrypt-header.patch"),
             Label("//python/patches/common:atomic-clang-cl-casts.patch"),
