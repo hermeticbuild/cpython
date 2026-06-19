@@ -1266,6 +1266,7 @@ def pyconfig(name, version, windows_pyconfig_template = False):
         windows_header = ":" + name + "_windows"
         copy_file(
             name = name + "_windows",
+            allow_symlink = True,
             src = "PC/pyconfig.h.in",
             out = "PC/pyconfig.h",
         )
