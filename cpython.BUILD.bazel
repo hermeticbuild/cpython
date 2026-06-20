@@ -1181,29 +1181,84 @@ cpython_install_only(
 )
 
 copy_to_directory(
-    name = "runtime_test_sources",
+    name = "runtime_test_doc",
+    srcs = ["Doc/README.rst"],
+    out = "runtime/Doc",
+    root_paths = ["Doc"],
+)
+
+copy_to_directory(
+    name = "runtime_test_objects",
+    srcs = ["Objects/object.c"],
+    out = "runtime/Objects",
+    root_paths = ["Objects"],
+)
+
+copy_to_directory(
+    name = "runtime_test_parser",
     srcs = [
-        "Doc/README.rst",
-        "Objects/object.c",
         "Parser/Python.asdl",
         "Parser/asdl.py",
-        "README.rst",
-    ] + glob(["PC/pyconfig.h*"], allow_empty = True) + select({
-        "@platforms//os:windows": ["Tools/buildbot/test.bat"],
-        "//conditions:default": [
-            "Makefile.pre.in",
-            "configure",
-            "configure.ac",
-            "pyconfig.h.in",
-        ],
-    }),
-    out = "runtime",
-    root_paths = ["."],
+    ],
+    out = "runtime/Parser",
+    root_paths = ["Parser"],
+)
+
+copy_to_directory(
+    name = "runtime_test_pc",
+    srcs = glob(["PC/pyconfig.h*"], allow_empty = True),
+    out = "runtime/PC",
+    root_paths = ["PC"],
+)
+
+copy_file(
+    name = "runtime_test_readme_rst",
+    src = "README.rst",
+    out = "runtime/README.rst",
+    allow_symlink = True,
+)
+
+[
+    copy_file(
+        name = "runtime_test_" + source.lower().replace(".", "_").replace("/", "_"),
+        src = source,
+        out = "runtime/" + source,
+        allow_symlink = True,
+        target_compatible_with = POSIX_TARGET_COMPATIBILITY,
+    )
+    for source in [
+        "Makefile.pre.in",
+        "configure",
+        "configure.ac",
+        "pyconfig.h.in",
+    ]
+]
+
+copy_file(
+    name = "runtime_test_tools_buildbot_test_bat",
+    src = "Tools/buildbot/test.bat",
+    out = "runtime/Tools/buildbot/test.bat",
+    allow_symlink = True,
+    target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
 )
 
 filegroup(
     name = "source_build_test_data",
-    srcs = BUILD_METADATA.test_data + [":runtime_test_sources"],
+    srcs = BUILD_METADATA.test_data + [
+        ":runtime_test_doc",
+        ":runtime_test_objects",
+        ":runtime_test_parser",
+        ":runtime_test_pc",
+        ":runtime_test_readme_rst",
+    ] + select({
+        "@platforms//os:windows": [":runtime_test_tools_buildbot_test_bat"],
+        "//conditions:default": [
+            ":runtime_test_configure",
+            ":runtime_test_configure_ac",
+            ":runtime_test_makefile_pre_in",
+            ":runtime_test_pyconfig_h_in",
+        ],
+    }),
 )
 
 upstream_regrtests(
