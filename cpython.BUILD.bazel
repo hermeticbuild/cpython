@@ -483,8 +483,9 @@ COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
     "@platforms//os:windows": ["-DPY3_DLLNAME=L\\\"python3\\\""],
 })
 
-WINDOWS_REMOTE_DEBUG_COPTS = ["-DPy_REMOTE_DEBUG=1"] if PYTHON_VERSION == "3.14" else []
-WINDOWS_CORE_COPTS = WINDOWS_REMOTE_DEBUG_COPTS + ["-DVPATH=\\\".\\\""]
+WINDOWS_CORE_COPTS = (
+    ["-DPy_REMOTE_DEBUG=1"] if PYTHON_VERSION == "3.14" else []
+) + ["-DVPATH=\\\".\\\""]
 
 CORE_COPTS = ["-DPy_BUILD_CORE=1"] + COMMON_COPTS + select({
     ":windows_arm64": ["-DMS_DLL_ID=\\\"%s-arm64\\\"" % PYTHON_VERSION],

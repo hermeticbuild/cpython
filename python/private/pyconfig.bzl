@@ -1347,8 +1347,7 @@ def pyconfig(name, version, windows_pyconfig_template = False):
     target_policy_checks = select({
         "//:darwin_arm64": _darwin_policy_checks(version, 1 if version in ["3.13", "3.14"] else 2),
         "//:darwin_x86_64": _darwin_policy_checks(version, 1),
-        "//:linux_arm64": _linux_policy_checks(version),
-        "//:linux_x86_64": _linux_policy_checks(version),
+        "@platforms//os:linux": _linux_policy_checks(version),
     })
 
     autoconf(
@@ -1394,8 +1393,7 @@ def pyconfig(name, version, windows_pyconfig_template = False):
     native.alias(
         name = name,
         actual = select({
-            "//:windows_arm64": windows_header,
-            "//:windows_x86_64": windows_header,
+            "@platforms//os:windows": windows_header,
             "//conditions:default": ":" + name + "_posix",
         }),
     )

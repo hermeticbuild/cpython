@@ -65,21 +65,42 @@ config_setting(
 
 libffi_config(name = "libffi_config")
 
+# configure.host selects sysv.S for arm64 on Darwin, Linux, and clang-cl Windows.
+ARM64_SOURCES = [
+    "src/aarch64/ffi.c",
+    "src/aarch64/sysv.S",
+]
+
+POSIX_X86_64_SOURCES = [
+    "src/x86/ffi64.c",
+    "src/x86/ffiw64.c",
+    "src/x86/unix64.S",
+    "src/x86/win64.S",
+]
+
+LIBFFI_TARGET_COMPATIBILITY = select({
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "@platforms//os:windows": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+}) + select({
+    ":arm64": [],
+    ":x86_64": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
 cc_library(
     name = "libffi",
     copts = select({
-        ":windows_arm64": [],
-        ":windows_x86_64": [],
+        "@platforms//os:windows": [],
         "//conditions:default": ["-fexceptions"],
     }),
     defines = select({
-        ":windows_arm64": ["FFI_STATIC_BUILD=1"],
-        ":windows_x86_64": ["FFI_STATIC_BUILD=1"],
+        "@platforms//os:windows": ["FFI_STATIC_BUILD=1"],
         "//conditions:default": [],
     }),
     features = select({
-        ":windows_arm64": ["dynamic_link_msvcrt"],
-        ":windows_x86_64": ["dynamic_link_msvcrt"],
+        "@platforms//os:windows": ["dynamic_link_msvcrt"],
         "//conditions:default": [],
     }),
     srcs = [
@@ -90,31 +111,8 @@ cc_library(
         "src/tramp.c",
         "src/types.c",
     ] + select({
-        ":darwin_arm64": [
-            "src/aarch64/ffi.c",
-            "src/aarch64/sysv.S",
-        ],
-        ":darwin_x86_64": [
-            "src/x86/ffi64.c",
-            "src/x86/ffiw64.c",
-            "src/x86/unix64.S",
-            "src/x86/win64.S",
-        ],
-        ":linux_arm64": [
-            "src/aarch64/ffi.c",
-            "src/aarch64/sysv.S",
-        ],
-        ":linux_x86_64": [
-            "src/x86/ffi64.c",
-            "src/x86/ffiw64.c",
-            "src/x86/unix64.S",
-            "src/x86/win64.S",
-        ],
-        ":windows_arm64": [
-            # configure.host classifies clang-cl as Clang and selects sysv.S.
-            "src/aarch64/ffi.c",
-            "src/aarch64/sysv.S",
-        ],
+        ":arm64": ARM64_SOURCES,
+        ":x86_64": POSIX_X86_64_SOURCES,
         ":windows_x86_64": [
             # configure.host classifies clang-cl as Clang and selects win64.S.
             "src/x86/ffiw64.c",
@@ -148,14 +146,6 @@ cc_library(
         ":arm64": ["src/aarch64"],
         ":x86_64": ["src/x86"],
     }),
-    target_compatible_with = select({
-        ":darwin_arm64": [],
-        ":darwin_x86_64": [],
-        ":linux_arm64": [],
-        ":linux_x86_64": [],
-        ":windows_arm64": [],
-        ":windows_x86_64": [],
-        "//conditions:default": ["@platforms//:incompatible"],
-    }),
+    target_compatible_with = LIBFFI_TARGET_COMPATIBILITY,
     textual_hdrs = ["src/dlmalloc.c"],
 )
