@@ -370,10 +370,8 @@ def shared_extensions(
     windows_outputs.append(":" + testconsole)
 
     return struct(
-        darwin_arm64 = posix_outputs["darwin"],
-        darwin_x86_64 = posix_outputs["darwin"],
-        install_only_darwin_arm64 = install_only_posix_outputs["darwin"],
-        install_only_darwin_x86_64 = install_only_posix_outputs["darwin"],
+        darwin = posix_outputs["darwin"],
+        install_only_darwin = install_only_posix_outputs["darwin"],
         install_only_linux_arm64 = install_only_posix_outputs["linux_arm64"],
         install_only_linux_x86_64 = install_only_posix_outputs["linux_x86_64"],
         install_only_windows = install_only_windows_outputs,

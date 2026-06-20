@@ -102,57 +102,40 @@ def cpython_install_tree(
         ],
         exclude = _INSTALL_ONLY_STDLIB_EXCLUDES,
     ) + [pyconfig]
+    posix_sources = [
+        python,
+        sysconfig_data,
+        "LICENSE",
+        ":_install_tree_posix_marker",
+    ]
+    windows_sources = [
+        python,
+        pythonw,
+        windows_license,
+        ":_install_tree_windows_marker",
+    ] + (
+        windows_core_libraries +
+        windows_runtime_libraries +
+        windows_venv_launchers +
+        _extension_labels(extensions.install_only_windows)
+    )
 
     copy_to_directory(
         name = "install_tree",
         srcs = common_sources + install_metadata + select({
-            ":darwin_arm64": [
-                python,
-                sysconfig_data,
-                "LICENSE",
-                ":_install_tree_posix_marker",
-            ] + _extension_labels(extensions.install_only_darwin_arm64),
-            ":darwin_x86_64": [
-                python,
-                sysconfig_data,
-                "LICENSE",
-                ":_install_tree_posix_marker",
-            ] + _extension_labels(extensions.install_only_darwin_x86_64),
-            ":linux_arm64": [
-                python,
-                sysconfig_data,
-                "LICENSE",
-                ":_install_tree_posix_marker",
-            ] + _extension_labels(extensions.install_only_linux_arm64),
-            ":linux_x86_64": [
-                python,
-                sysconfig_data,
-                "LICENSE",
-                ":_install_tree_posix_marker",
-            ] + _extension_labels(extensions.install_only_linux_x86_64),
-            ":windows_arm64": [
-                python,
-                pythonw,
-                windows_license,
-                ":_install_tree_windows_marker",
-            ] + windows_core_libraries + windows_runtime_libraries + windows_venv_launchers + _extension_labels(extensions.install_only_windows),
-            ":windows_x86_64": [
-                python,
-                pythonw,
-                windows_license,
-                ":_install_tree_windows_marker",
-            ] + windows_core_libraries + windows_runtime_libraries + windows_venv_launchers + _extension_labels(extensions.install_only_windows),
+            "@platforms//os:macos": posix_sources + _extension_labels(extensions.install_only_darwin),
+            ":linux_arm64": posix_sources + _extension_labels(extensions.install_only_linux_arm64),
+            ":linux_x86_64": posix_sources + _extension_labels(extensions.install_only_linux_x86_64),
+            "@platforms//os:windows": windows_sources,
         }),
         out = "install",
         hardlink = "off",
         include_external_repositories = ["*msvc_runtime*"],
         replace_prefixes = select({
-            ":darwin_arm64": _posix_replacements(version, extensions.install_only_darwin_arm64),
-            ":darwin_x86_64": _posix_replacements(version, extensions.install_only_darwin_x86_64),
+            "@platforms//os:macos": _posix_replacements(version, extensions.install_only_darwin),
             ":linux_arm64": _posix_replacements(version, extensions.install_only_linux_arm64),
             ":linux_x86_64": _posix_replacements(version, extensions.install_only_linux_x86_64),
-            ":windows_arm64": _windows_replacements(version, extensions.install_only_windows),
-            ":windows_x86_64": _windows_replacements(version, extensions.install_only_windows),
+            "@platforms//os:windows": _windows_replacements(version, extensions.install_only_windows),
         }),
         root_paths = [
             ".",

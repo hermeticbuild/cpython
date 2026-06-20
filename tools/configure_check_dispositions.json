@@ -341,7 +341,7 @@
     },
     "_Py_FFI_SUPPORT_C_COMPLEX": {
       "classification": "DEPENDENCY_CONTRACT",
-      "justification": "The pinned libffi build passes libffi_complex_test on every supported POSIX target.",
+      "justification": "The pinned hermetic libffi build provides ffi_type_complex_double on every supported POSIX target.",
       "expected_values": {"*:*": "1"}
     },
     "_Py_HACL_CAN_COMPILE_VEC128": {
@@ -538,12 +538,6 @@
       "classification": "DEPENDENCY_CONTRACT",
       "implementation": "cpython_static_module_manifest adds HAVE_FFI_CLOSURE_ALLOC, HAVE_FFI_PREP_CIF_VAR, and HAVE_FFI_PREP_CLOSURE_LOC only to the CPython 3.11 _ctypes target.",
       "justification": "CPython 3.11 does not expose these extension-specific definitions through pyconfig.h.in."
-    },
-    {
-      "name": "cpython_3_14_libffi_complex",
-      "classification": "DEPENDENCY_CONTRACT",
-      "implementation": "libffi_complex_test performs ffi_prep_cif and ffi_call with ffi_type_complex_double on every supported POSIX target.",
-      "justification": "The test reproduces CPython 3.14's runtime validation for _Py_FFI_SUPPORT_C_COMPLEX."
     },
     {
       "name": "openssl_dependency",
