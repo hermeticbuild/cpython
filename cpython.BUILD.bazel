@@ -965,6 +965,26 @@ cc_shared_library(
     visibility = ["//visibility:private"],
 )
 
+POSIX_LIBPYTHON = "libpython{}.so.1.0".format(PYTHON_VERSION)
+
+LINUX_TARGET_COMPATIBILITY = select({
+    ":linux_arm64": [],
+    ":linux_x86_64": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+cc_shared_library(
+    name = "libpython",
+    deps = [
+        ":python_core_no_frozen",
+        ":python_frozen",
+        INSTALL_STATIC_MODULES.library,
+    ],
+    shared_lib_name = "install_runtime/" + POSIX_LIBPYTHON,
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+    user_link_flags = PLATFORM_LINKOPTS + ["-Wl,-soname," + POSIX_LIBPYTHON],
+)
+
 filegroup(
     name = "python_install_dll_interface_library",
     srcs = [":python_install_dll"],
