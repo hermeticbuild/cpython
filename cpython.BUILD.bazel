@@ -7,7 +7,7 @@ load("@cpython//python/private:copts.bzl", "VISIBILITY_COPTS")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:install_only.bzl", "cpython_install_only")
 load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
-load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
+load("@cpython//python/private:modules.bzl", "declare_cpython_shared_modules", "declare_cpython_static_modules")
 load("@cpython//python/private:platforms.bzl", "MACOSX_DEPLOYMENT_TARGET", "cpython_target_field_select", "declare_cpython_target_config_settings")
 load("@cpython//python/private:pyconfig.bzl", "pyconfig")
 load("@cpython//python/private:shared_extensions.bzl", "shared_extensions")
@@ -670,6 +670,20 @@ INSTALL_STATIC_MODULES = declare_cpython_static_modules(
     visibility = ["//visibility:private"],
 )
 
+declare_cpython_shared_modules(
+    name = "shared_modules",
+    version = PYTHON_VERSION,
+    module_sources = CPYTHON_MODULE_SOURCES,
+    soabi = PYTHON_SOABI,
+    categories = [
+        "bundled",
+        "posix",
+        "stdlib",
+    ],
+    copts = COMMON_COPTS,
+    deps = [":headers"],
+)
+
 cc_library(
     name = "python_ceval",
     srcs = ["Python/ceval.c"],
@@ -978,7 +992,7 @@ cc_shared_library(
     deps = [
         ":python_core_no_frozen",
         ":python_frozen",
-        INSTALL_STATIC_MODULES.library,
+        BOOTSTRAP_MODULES.library,
     ],
     shared_lib_name = "install_runtime/" + POSIX_LIBPYTHON,
     target_compatible_with = LINUX_TARGET_COMPATIBILITY,
