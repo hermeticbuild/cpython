@@ -50,10 +50,15 @@ def _module(
         source_name = source_name or name,
     )
 
+_DARWIN_ENVIRON_COPTS = select({
+    "@platforms//os:macos": ["-DPy_ENABLE_SHARED=1"],
+    "//conditions:default": [],
+})
+
 _BOOTSTRAP_PREFIX = [
     _module("atexit", "bootstrap"),
     _module("faulthandler", "bootstrap"),
-    _module("posix", "bootstrap", platform = "posix"),
+    _module("posix", "bootstrap", copts = _DARWIN_ENVIRON_COPTS, platform = "posix"),
     _module("nt", "bootstrap", init_symbol = "PyInit_nt", platform = "windows", source_name = "posix"),
     _module("_winapi", "bootstrap", platform = "windows"),
     _module("winreg", "bootstrap", platform = "windows"),
