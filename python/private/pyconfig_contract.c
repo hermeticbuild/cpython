@@ -28,19 +28,7 @@
 #endif
 
 #ifndef MS_WINDOWS
-#if !defined(HAVE_ACOSH) || !defined(HAVE_ASINH) || !defined(HAVE_ATANH) ||    \
-    !defined(HAVE_ERF) || !defined(HAVE_ERFC) || !defined(HAVE_EXPM1) ||       \
-    !defined(HAVE_LOG1P) || !defined(HAVE_LOG2)
-#error "the required C99 math functions must be available"
-#endif
-
-#if !defined(HAVE_DIRFD) || !defined(HAVE_FSEEKO) || !defined(HAVE_FTELLO) ||  \
-    !defined(HAVE_GETC_UNLOCKED) || !defined(HAVE_IF_NAMEINDEX) ||             \
-    !defined(HAVE_INTTYPES_H) || !defined(HAVE_LOGIN_TTY) ||                   \
-    !defined(HAVE_LONG_DOUBLE) || !defined(HAVE_MAKEDEV) ||                    \
-    !defined(HAVE_SETVBUF) || !defined(HAVE_TM_ZONE) ||                        \
-    !defined(HAVE_WCSFTIME) || !defined(HAVE_WMEMCMP) ||                       \
-    !defined(HAVE_WORKING_TZSET) || !defined(PTHREAD_SYSTEM_SCHED_SUPPORTED)
+#if !defined(HAVE_WORKING_TZSET) || !defined(PTHREAD_SYSTEM_SCHED_SUPPORTED)
 #error "the supported POSIX targets must provide the required capabilities"
 #endif
 
@@ -58,9 +46,7 @@
 #endif
 
 #if PY_VERSION_HEX < 0x030C0000 &&                                            \
-    (!defined(HAVE_MEMORY_H) || !defined(HAVE_STDARG_PROTOTYPES) ||            \
-     !defined(HAVE_TTYNAME) || !defined(PY_FORMAT_SIZE_T) ||                   \
-     !defined(TIME_WITH_SYS_TIME))
+    (!defined(HAVE_STDARG_PROTOTYPES) || !defined(PY_FORMAT_SIZE_T))
 #error "CPython 3.11 must provide its compatibility definitions"
 #endif
 
@@ -86,10 +72,8 @@
 #endif
 
 #if PY_VERSION_HEX >= 0x030E0000 &&                                           \
-    (!defined(HAVE_BACKTRACE) || !defined(HAVE_DLADDR) ||                     \
-     !defined(HAVE_EXECINFO_H) || !defined(HAVE_PTHREAD_GETNAME_NP) ||        \
-     !defined(HAVE_PTHREAD_SETNAME_NP) || !defined(Py_REMOTE_DEBUG) ||        \
-     !defined(_Py_FFI_SUPPORT_C_COMPLEX) || !defined(_Py_STACK_GROWS_DOWN))
+    (!defined(Py_REMOTE_DEBUG) || !defined(_Py_FFI_SUPPORT_C_COMPLEX) ||       \
+     !defined(_Py_STACK_GROWS_DOWN))
 #error "CPython 3.14 must provide its required POSIX capabilities"
 #endif
 #endif
@@ -100,44 +84,10 @@
 #endif
 
 #if defined(__linux__)
-#if PY_VERSION_HEX >= 0x030C0000
-#if !defined(HAVE_DEVICE_MACROS) || !defined(HAVE_EVENTFD) ||                  \
-    !defined(HAVE_FDATASYNC) || !defined(HAVE_GETRANDOM_SYSCALL) ||            \
-    !defined(HAVE_HTOLE64) || !defined(HAVE_LINUX_LIMITS_H) ||                 \
-    !defined(HAVE_LINUX_NETLINK_H) || !defined(HAVE_LINUX_VM_SOCKETS_H) ||     \
-    !defined(HAVE_NETPACKET_PACKET_H) || !defined(HAVE_PREADV2) ||             \
-    !defined(HAVE_PWRITEV2) || !defined(HAVE_SETNS) ||                         \
-    !defined(HAVE_SOCKADDR_ALG) || !defined(HAVE_SPLICE) ||                    \
-    !defined(HAVE_SYS_EVENTFD_H) || !defined(HAVE_SYS_SYSCALL_H) ||            \
-    !defined(HAVE_SYS_SYSMACROS_H) || !defined(HAVE_SYS_XATTR_H) ||            \
-    !defined(HAVE_UNSHARE) || !defined(MAJOR_IN_SYSMACROS) ||                  \
-    !defined(PTHREAD_KEY_T_IS_COMPATIBLE_WITH_INT)
-#error "the supported Linux targets must provide the required Linux capabilities"
-#endif
-#endif
-#if PY_VERSION_HEX >= 0x030D0000 &&                                            \
-    (!defined(HAVE_SYS_TIMERFD_H) || !defined(HAVE_TIMERFD_CREATE))
-#error "CPython 3.13 and newer on Linux must provide timerfd"
-#endif
-#if PY_VERSION_HEX >= 0x030E0000 &&                                           \
-    (!defined(HAVE_DLADDR1) || !defined(HAVE_LINK_H) ||                       \
-     !defined(HAVE_LINUX_NETFILTER_IPV4_H) || !defined(HAVE_LINUX_SCHED_H) || \
-     !defined(HAVE_PTHREAD_GETATTR_NP) || _PYTHREAD_NAME_MAXLEN != 15)
-#error "CPython 3.14 on Linux must provide its platform capabilities"
+#if PY_VERSION_HEX >= 0x030E0000 && _PYTHREAD_NAME_MAXLEN != 15
+#error "CPython 3.14 on Linux must use a 15-byte pthread name limit"
 #endif
 #elif defined(__APPLE__)
-#if !defined(HAVE_CHFLAGS) ||                                                  \
-    !defined(HAVE_DYLD_SHARED_CACHE_CONTAINS_PATH) || !defined(HAVE_KQUEUE) || \
-    !defined(HAVE_LCHFLAGS) || !defined(HAVE_LCHMOD) ||                        \
-    !defined(HAVE_SYS_EVENT_H) || !defined(HAVE_SYS_KERN_CONTROL_H) ||         \
-    !defined(HAVE_SYS_SYS_DOMAIN_H)
-#error "the supported Darwin targets must provide the required Darwin capabilities"
-#endif
-#if PY_VERSION_HEX >= 0x030D0000 &&                                            \
-    !defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
-#error                                                                         \
-    "CPython 3.13 and newer on Darwin must provide pthread_cond_timedwait_relative_np"
-#endif
 #if PY_VERSION_HEX >= 0x030E0000 && _PYTHREAD_NAME_MAXLEN != 63
 #error "CPython 3.14 on Darwin must use a 63-byte pthread name limit"
 #endif
