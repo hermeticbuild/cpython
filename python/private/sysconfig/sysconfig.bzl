@@ -1,12 +1,14 @@
 """Build-time generation of CPython sysconfig metadata."""
 
+load("@cpython//python/private:platforms.bzl", "DEFAULT_MACOSX_DEPLOYMENT_TARGET")
+
 def merge_sysconfig_build_vars(common, platform):
     """Returns one build-variable dictionary without mutating either input."""
     result = dict(common)
     result.update(platform)
     return result
 
-def _build_details_json(ctx, base_prefix, base_interpreter, headers):
+def _build_details_json(ctx, build_vars, platform_tag, base_prefix, base_interpreter, headers):
     if ctx.attr.build_details_schema != "1.0":
         fail("unsupported build-details schema: {}".format(ctx.attr.build_details_schema))
     required_vars = [
@@ -20,9 +22,9 @@ def _build_details_json(ctx, base_prefix, base_interpreter, headers):
         "prefix",
     ]
     for name in required_vars:
-        if name not in ctx.attr.build_vars:
+        if name not in build_vars:
             fail("build-details generation requires build variable {}".format(name))
-    if ctx.attr.build_vars["ABIFLAGS"]:
+    if build_vars["ABIFLAGS"]:
         fail("build-details generation does not describe nonempty ABI flags")
 
     version_info = {
@@ -32,12 +34,11 @@ def _build_details_json(ctx, base_prefix, base_interpreter, headers):
         "releaselevel": ctx.attr.release_level,
         "serial": ctx.attr.serial,
     }
-    build_vars = ctx.attr.build_vars
     return json.encode_indent({
         "schema_version": ctx.attr.build_details_schema,
         "base_prefix": base_prefix,
         "base_interpreter": base_interpreter,
-        "platform": ctx.attr.platform_tag,
+        "platform": platform_tag,
         "language": {
             "version": build_vars["VERSION"],
             "version_info": version_info,
@@ -70,8 +71,14 @@ def _build_details_json(ctx, base_prefix, base_interpreter, headers):
     }) + "\n"
 
 def _cpython_sysconfig_impl(ctx):
+    build_vars = dict(ctx.attr.build_vars)
+    platform_tag = ctx.attr.platform_tag
     if ctx.attr.platform not in ["darwin", "linux", "windows"]:
         fail("unsupported CPython sysconfig platform: {}".format(ctx.attr.platform))
+    if ctx.attr.platform == "darwin":
+        deployment_target = str(ctx.fragments.apple.macos_minimum_os_flag or DEFAULT_MACOSX_DEPLOYMENT_TARGET)
+        build_vars["MACOSX_DEPLOYMENT_TARGET"] = deployment_target
+        platform_tag = platform_tag.format(macosx_deployment_target = deployment_target)
 
     forbidden_runtime_vars = [
         "base",
@@ -82,30 +89,30 @@ def _cpython_sysconfig_impl(ctx):
     ]
     integer_build_vars = {name: True for name in ctx.attr.integer_build_vars}
     for name in integer_build_vars:
-        if name not in ctx.attr.build_vars:
+        if name not in build_vars:
             fail("integer_build_vars contains unknown build variable {}".format(name))
 
-    for name in sorted(ctx.attr.build_vars.keys()):
+    for name in sorted(build_vars.keys()):
         if name.startswith("HAVE_") or name.startswith("WITH_"):
             fail("{} must come from pyconfig.h, not build_vars".format(name))
         if name in forbidden_runtime_vars:
             fail("{} is computed by sysconfig at runtime".format(name))
         if "\t" in name or "\n" in name:
             fail("invalid sysconfig variable name: {}".format(name))
-        value = ctx.attr.build_vars[name]
+        value = build_vars[name]
         if "\n" in value:
             fail("sysconfig variable {} contains a newline".format(name))
 
-    build_vars = ctx.actions.declare_file(ctx.label.name + ".build_vars")
+    build_vars_file = ctx.actions.declare_file(ctx.label.name + ".build_vars")
     ctx.actions.write(
-        build_vars,
+        build_vars_file,
         "".join([
             "{}\t{}\t{}\n".format(
                 "I" if name in integer_build_vars else "S",
                 name,
-                ctx.attr.build_vars[name],
+                build_vars[name],
             )
-            for name in sorted(ctx.attr.build_vars.keys())
+            for name in sorted(build_vars.keys())
         ]),
     )
 
@@ -117,9 +124,9 @@ def _cpython_sysconfig_impl(ctx):
     )
     args = ctx.actions.args()
     args.add("--pyconfig", ctx.file.pyconfig)
-    args.add("--build-vars", build_vars)
+    args.add("--build-vars", build_vars_file)
     args.add("--sysconfig-out", sysconfig_data)
-    inputs = [ctx.file.pyconfig, build_vars]
+    inputs = [ctx.file.pyconfig, build_vars_file]
     outputs = [sysconfig_data]
     makefile_outputs = []
     install_build_details_outputs = []
@@ -135,7 +142,7 @@ def _cpython_sysconfig_impl(ctx):
         if ctx.attr.build_details_schema:
             sysconfig_json = ctx.actions.declare_file(
                 "runtime/build/lib.{}-{}/_sysconfig_vars__{}_{}.json".format(
-                    ctx.attr.platform_tag,
+                    platform_tag,
                     "{}.{}".format(ctx.attr.major, ctx.attr.minor),
                     ctx.attr.platform,
                     ctx.attr.multiarch,
@@ -151,18 +158,22 @@ def _cpython_sysconfig_impl(ctx):
                 install_build_details,
                 _build_details_json(
                     ctx,
+                    build_vars,
+                    platform_tag,
                     base_prefix = "../..",
-                    base_interpreter = "./bin/python{}".format(ctx.attr.build_vars["VERSION"]),
-                    headers = "./include/python{}".format(ctx.attr.build_vars["VERSION"]),
+                    base_interpreter = "./bin/python{}".format(build_vars["VERSION"]),
+                    headers = "./include/python{}".format(build_vars["VERSION"]),
                 ),
             )
             ctx.actions.write(
                 runtime_build_details,
                 _build_details_json(
                     ctx,
-                    base_prefix = ctx.attr.build_vars["prefix"],
-                    base_interpreter = "{}/python{}".format(ctx.attr.build_vars["BINDIR"], ctx.attr.build_vars["VERSION"]),
-                    headers = ctx.attr.build_vars["INCLUDEPY"],
+                    build_vars,
+                    platform_tag,
+                    base_prefix = build_vars["prefix"],
+                    base_interpreter = "{}/python{}".format(build_vars["BINDIR"], build_vars["VERSION"]),
+                    headers = build_vars["INCLUDEPY"],
                 ),
             )
             outputs.append(sysconfig_json)
@@ -191,6 +202,7 @@ def _cpython_sysconfig_impl(ctx):
 
 cpython_sysconfig = rule(
     implementation = _cpython_sysconfig_impl,
+    fragments = ["apple"],
     attrs = {
         "build_details_schema": attr.string(),
         "build_vars": attr.string_dict(mandatory = True),

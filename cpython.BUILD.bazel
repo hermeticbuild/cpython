@@ -7,7 +7,7 @@ load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:install_only.bzl", "cpython_install_only")
 load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
-load("@cpython//python/private:platforms.bzl", "MACOSX_DEPLOYMENT_TARGET", "cpython_target_field_select", "declare_cpython_target_config_settings")
+load("@cpython//python/private:platforms.bzl", "cpython_target_field_select", "declare_cpython_target_config_settings")
 load("@cpython//python/private:pyconfig.bzl", "pyconfig")
 load("@cpython//python/private:shared_extensions.bzl", "shared_extensions")
 load("@cpython//python/private:test_programs.bzl", "native_test_programs")
@@ -246,7 +246,6 @@ cpython_sysconfig(
             "LIBPL": "{}/config-{}-darwin".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
             "LIBS": "-lm",
             "LINKFORSHARED": "-Wl,-stack_size,1000000 -framework CoreFoundation",
-            "MACOSX_DEPLOYMENT_TARGET": MACOSX_DEPLOYMENT_TARGET,
             "MACHDEP": "darwin",
             "MULTIARCH": "darwin",
             "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"darwin\\\"",
@@ -259,7 +258,6 @@ cpython_sysconfig(
             "LIBPL": "{}/config-{}-darwin".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
             "LIBS": "-lm",
             "LINKFORSHARED": "-Wl,-stack_size,1000000 -framework CoreFoundation",
-            "MACOSX_DEPLOYMENT_TARGET": MACOSX_DEPLOYMENT_TARGET,
             "MACHDEP": "darwin",
             "MULTIARCH": "darwin",
             "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"darwin\\\"",

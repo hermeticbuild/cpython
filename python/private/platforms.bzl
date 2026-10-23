@@ -1,6 +1,6 @@
 """Exact supported CPython target records."""
 
-MACOSX_DEPLOYMENT_TARGET = "14.0"
+DEFAULT_MACOSX_DEPLOYMENT_TARGET = "14.0"
 
 CPYTHON_TARGETS = {
     "darwin_arm64": struct(
@@ -11,7 +11,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "darwin",
         sysconfig_platform = "darwin",
-        sysconfig_platform_tag = "macosx-{}-arm64".format(MACOSX_DEPLOYMENT_TARGET),
+        sysconfig_platform_tag = "macosx-{macosx_deployment_target}-arm64",
     ),
     "darwin_x86_64": struct(
         config_setting = ":darwin_x86_64",
@@ -21,7 +21,7 @@ CPYTHON_TARGETS = {
         ],
         multiarch = "darwin",
         sysconfig_platform = "darwin",
-        sysconfig_platform_tag = "macosx-{}-x86_64".format(MACOSX_DEPLOYMENT_TARGET),
+        sysconfig_platform_tag = "macosx-{macosx_deployment_target}-x86_64",
     ),
     "linux_arm64": struct(
         config_setting = ":linux_arm64",
