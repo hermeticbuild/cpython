@@ -4,6 +4,7 @@ load("@bazel_lib//lib:run_binary.bzl", "run_binary")
 load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
+load("@cpython//python/private:dependencies.bzl", "dependency")
 load("@cpython//python/private:install_only.bzl", "cpython_install_only")
 load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
@@ -147,13 +148,6 @@ copy_file(
     name = "sqlite3_header",
     src = "@sqlite3//:sqlite3.h",
     out = "sqlite3.h",
-)
-
-cc_library(
-    name = "hermetic_sqlite3",
-    srcs = ["@sqlite3//:sqlite3.c"],
-    hdrs = [":sqlite3_header"],
-    defines = ["SQLITE_ENABLE_FTS4=1"],
 )
 
 cc_library(
@@ -721,7 +715,7 @@ cc_library(
 cc_test(
     name = "libffi_complex_test",
     srcs = ["@cpython//python/private/libffi:complex_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
     target_compatible_with = select({
         ":windows_arm64": ["@platforms//:incompatible"],
@@ -733,21 +727,21 @@ cc_test(
 cc_test(
     name = "libffi_call_test",
     srcs = ["@cpython//python/private/libffi:call_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
 )
 
 cc_test(
     name = "libffi_closure_test",
     srcs = ["@cpython//python/private/libffi:closure_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
 )
 
 cc_test(
     name = "libffi_seh_test",
     srcs = ["@cpython//python/private/libffi:seh_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
     target_compatible_with = select({
         ":windows_arm64": [],
@@ -1399,11 +1393,11 @@ alias(
 WINDOWS_LICENSE_INPUTS = [
     "LICENSE",
     "PC/crtlicense.txt",
-    "@bzip2//:LICENSE",
-    "@cpython_libffi//:LICENSE",
-    "@openssl//:LICENSE.txt",
-    "@xz//:COPYING",
-    "@zlib//:LICENSE",
+    dependency("bzip2_license"),
+    dependency("libffi_license"),
+    dependency("openssl_license"),
+    dependency("xz_license"),
+    dependency("zlib_license"),
 ]
 
 run_binary(

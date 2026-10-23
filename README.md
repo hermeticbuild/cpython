@@ -62,6 +62,28 @@ The LLVM toolchains build each selected CPython release for Linux, macOS, and
 Windows on arm64 and x86_64. Windows targets use the MSVC ABI, the hermetic MSVC
 runtime, and the hermetic Windows SDK supplied by `windows_support`.
 
+## Replace native dependencies
+
+By default, the interpreters link the `openssl`, `zlib`, `xz`, `bzip2` and
+`sqlite3` modules from the Bazel Central Registry and a pinned libffi. The
+root module can provide its own targets instead:
+
+```starlark
+python.dependencies(
+    openssl_crypto = "@my_openssl//:crypto",
+    openssl_license = "@my_openssl//:LICENSE.txt",
+    openssl_ssl = "@my_openssl//:ssl",
+    zlib = "@my_zlib//:zlib",
+)
+```
+
+Unset attributes keep their default. The attributes are `bzip2`, `libffi`,
+`openssl_crypto`, `openssl_ssl`, `sqlite3`, `xz` and `zlib` (`cc_library`
+targets), and `bzip2_license`, `libffi_license`, `openssl_license`,
+`xz_license` and `zlib_license` (files bundled into the Windows
+`LICENSE.txt`). Only the root module may call `python.dependencies`, and at
+most once; the targets apply to every selected CPython version.
+
 ## Integration fixture
 
 [`tests/integration`](tests/integration) is a nested Bzlmod consumer. It selects

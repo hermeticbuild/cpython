@@ -1,5 +1,6 @@
 """Shared CPython extensions required by the test runtimes."""
 
+load("@cpython//python/private:dependencies.bzl", "dependency")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
 _VERSIONED_WINDOWS_IMPORT = "versioned"
@@ -34,7 +35,7 @@ _COMMON_EXTENSIONS = {
     # CPython PCbuild places them in pythonXY.dll and _ctypes.pyd, respectively.
     "_ctypes": {
         "core_module": False,
-        "deps": ["@cpython_libffi//:libffi"],
+        "deps": [dependency("libffi")],
         "local_defines_by_version": {
             "3.11": [
                 "HAVE_FFI_CLOSURE_ALLOC=1",

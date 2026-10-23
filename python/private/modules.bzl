@@ -1,5 +1,6 @@
 """Static CPython module manifests for the pinned supported releases."""
 
+load("@cpython//python/private:dependencies.bzl", "dependency")
 load("@cpython//python/private:versions.bzl", "SUPPORTED_PYTHON_VERSIONS")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
@@ -88,14 +89,14 @@ _STDLIB_COMMON = [
     _module(
         "_bz2",
         "stdlib",
-        deps = ["@bzip2//:bz2"],
+        deps = [dependency("bzip2")],
     ),
     _module("_bisect", "stdlib"),
     _module("_csv", "stdlib"),
     _module(
         "_ctypes",
         "stdlib",
-        deps = ["@cpython_libffi//:libffi"],
+        deps = [dependency("libffi")],
         platform = "posix",
         source_variables_by_version = {
             "3.12": ["MODULE__CTYPES_MALLOC_CLOSURE"],
@@ -108,12 +109,12 @@ _STDLIB_COMMON = [
     _module(
         "_hashlib",
         "stdlib",
-        deps = ["@openssl//:crypto"],
+        deps = [dependency("openssl_crypto")],
     ),
     _module(
         "_lzma",
         "stdlib",
-        deps = ["@xz//:lzma"],
+        deps = [dependency("xz")],
     ),
     _module("_lsprof", "stdlib"),
     _module("_pickle", "stdlib"),
@@ -123,12 +124,12 @@ _STDLIB_COMMON = [
     _module(
         "_ssl",
         "stdlib",
-        deps = ["@openssl//:ssl"],
+        deps = [dependency("openssl_ssl")],
     ),
     _module(
         "_sqlite3",
         "stdlib",
-        deps = [":hermetic_sqlite3"],
+        deps = [dependency("sqlite3")],
         platform = "posix",
     ),
     _module("_zoneinfo", "stdlib"),
@@ -138,7 +139,7 @@ _STDLIB_COMMON = [
     _module(
         "zlib",
         "stdlib",
-        deps = ["@zlib//:zlib"],
+        deps = [dependency("zlib")],
     ),
 ]
 
@@ -185,7 +186,7 @@ _BUNDLED_BASE = [
         "binascii",
         "bundled",
         copts = ["-DUSE_ZLIB_CRC32=1"],
-        deps = ["@zlib//:zlib"],
+        deps = [dependency("zlib")],
     ),
     _module(
         "pyexpat",
