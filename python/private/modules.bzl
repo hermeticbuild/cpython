@@ -709,6 +709,7 @@ def declare_cpython_static_modules(
             deps = module_deps,
             includes = module.includes,
             linkopts = module.linkopts,
+            linkstatic = True,
             target_compatible_with = target_compatible_with,
             **target_kwargs
         )
