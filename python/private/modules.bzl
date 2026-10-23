@@ -739,6 +739,7 @@ def declare_cpython_static_modules(
     cc_library(
         name = registry_library,
         srcs = [":{}".format(registry_source_target)],
+        alwayslink = True,
         copts = ["-DPy_BUILD_CORE=1"] + copts,
         deps = deps,
         tags = tags,

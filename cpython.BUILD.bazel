@@ -884,6 +884,7 @@ cc_library(
         "Modules/getpath.c",
         "Python/frozen.c",
     ] + FROZEN_MODULES.keys() + DEEPFREEZE_SRCS,
+    alwayslink = True,
     copts = GETPATH_COPTS + CORE_COPTS,
     includes = ["Python"],
     deps = [":headers"],
