@@ -404,6 +404,7 @@ def _cpython_source_repository_impl(repository_ctx):
             "CPYTHON_RELEASE = struct(\n" +
             "    build_details_schema = {build_details_schema},\n" +
             "    cache_tag = {cache_tag},\n" +
+            "    copts = {copts},\n" +
             "    hexversion = {hexversion},\n" +
             "    major = {major},\n" +
             "    micro = {micro},\n" +
@@ -428,6 +429,7 @@ def _cpython_source_repository_impl(repository_ctx):
             "PYTHON_SOABI = {soabi}\n"
         ).format(
             build_details_schema = repr(repository_ctx.attr.build_details_schema or None),
+            copts = repr(repository_ctx.attr.copts),
             cache_tag = repr(repository_ctx.attr.cache_tag),
             hexversion = repository_ctx.attr.hexversion,
             major = repository_ctx.attr.major,
@@ -468,6 +470,7 @@ cpython_source_repository = repository_rule(
         "minor": attr.int(mandatory = True),
         "minor_version": attr.string(mandatory = True),
         "needs_deepfreeze": attr.bool(mandatory = True),
+        "copts": attr.string_list(),
         "patches": attr.label_list(
             allow_files = True,
         ),

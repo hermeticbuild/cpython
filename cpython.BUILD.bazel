@@ -39,7 +39,7 @@ OPTIMIZATION_COPTS = select({
     ":windows_arm64": ["/O2"],
     ":windows_x86_64": ["/O2"],
     "//conditions:default": ["-O3"],
-})
+}) + CPYTHON_RELEASE.copts
 
 WINDOWS_LINK_LIBRARIES = [
     "advapi32.lib",

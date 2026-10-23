@@ -62,6 +62,18 @@ The LLVM toolchains build each selected CPython release for Linux, macOS, and
 Windows on arm64 and x86_64. Windows targets use the MSVC ABI, the hermetic MSVC
 runtime, and the hermetic Windows SDK supplied by `windows_support`.
 
+## Build options
+
+The root module can set build options, applied to every selected version.
+`copts` are added after the default optimization options, so they can
+override them:
+
+```starlark
+python.build_options(copts = ["-O2"])
+```
+
+Only the root module may call `python.build_options`, and at most once.
+
 ## Integration fixture
 
 [`tests/integration`](tests/integration) is a nested Bzlmod consumer. It selects

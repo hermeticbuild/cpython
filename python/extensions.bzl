@@ -10,8 +10,15 @@ _LIBFFI_BUILD_FILE = Label("//:libffi.BUILD.bazel")
 def _python_impl(module_ctx):
     requested_versions = {}
     root_requested_versions = {}
+    copts = []
 
     for module in module_ctx.modules:
+        for index, build_options_tag in enumerate(module.tags.build_options):
+            if not module.is_root:
+                fail("python.build_options() may only be used by the root module, not {!r}".format(module.name))
+            if index > 0:
+                fail("python.build_options() may only be used once")
+            copts = build_options_tag.copts
         for version_tag in module.tags.version:
             version = version_tag.version
             if version not in CPYTHON_RELEASES:
@@ -48,6 +55,7 @@ def _python_impl(module_ctx):
             build_file = _BUILD_FILE,
             build_details_schema = release.build_details_schema or "",
             cache_tag = release.cache_tag,
+            copts = copts,
             hexversion = release.hexversion,
             major = release.major,
             micro = release.micro,
@@ -93,9 +101,19 @@ _version = tag_class(
     doc = "Selects a supported Python minor version.",
 )
 
+_build_options = tag_class(
+    attrs = {
+        "copts": attr.string_list(
+            doc = "C options added after the default optimization options of the CPython sources, such as -O2.",
+        ),
+    },
+    doc = "Sets build options for every selected CPython version. Root module only.",
+)
+
 python = module_extension(
     implementation = _python_impl,
     tag_classes = {
+        "build_options": _build_options,
         "version": _version,
     },
 )
