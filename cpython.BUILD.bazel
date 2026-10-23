@@ -445,6 +445,10 @@ cc_library(
 
 bundled_libraries(
     version = PYTHON_VERSION,
+    copts = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
+        "-fwrapv",
+        "-DNDEBUG",
+    ],
 )
 
 cc_library(
