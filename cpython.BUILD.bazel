@@ -4,6 +4,7 @@ load("@bazel_lib//lib:run_binary.bzl", "run_binary")
 load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
+load("@cpython//python/private:dependencies.bzl", "dependency", "shared_library_dependencies")
 load("@cpython//python/private:install_only.bzl", "cpython_install_only")
 load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
 load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
@@ -14,6 +15,7 @@ load("@cpython//python/private:test_programs.bzl", "native_test_programs")
 load("@cpython//python/private:upstream_tests.bzl", "upstream_regrtests")
 load("@cpython//python/private:windows_resource.bzl", "windows_resource")
 load("@cpython//python/private/sysconfig:sysconfig.bzl", "cpython_sysconfig", "merge_sysconfig_build_vars")
+load("@cpython_deps//:shared_libraries.bzl", "SHARED_LIBRARIES")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
@@ -147,13 +149,6 @@ copy_file(
     name = "sqlite3_header",
     src = "@sqlite3//:sqlite3.h",
     out = "sqlite3.h",
-)
-
-cc_library(
-    name = "hermetic_sqlite3",
-    srcs = ["@sqlite3//:sqlite3.c"],
-    hdrs = [":sqlite3_header"],
-    defines = ["SQLITE_ENABLE_FTS4=1"],
 )
 
 cc_library(
@@ -721,7 +716,8 @@ cc_library(
 cc_test(
     name = "libffi_complex_test",
     srcs = ["@cpython//python/private/libffi:complex_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    dynamic_deps = shared_library_dependencies(SHARED_LIBRARIES, ["libffi"]),
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
     target_compatible_with = select({
         ":windows_arm64": ["@platforms//:incompatible"],
@@ -733,21 +729,24 @@ cc_test(
 cc_test(
     name = "libffi_call_test",
     srcs = ["@cpython//python/private/libffi:call_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    dynamic_deps = shared_library_dependencies(SHARED_LIBRARIES, ["libffi"]),
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
 )
 
 cc_test(
     name = "libffi_closure_test",
     srcs = ["@cpython//python/private/libffi:closure_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    dynamic_deps = shared_library_dependencies(SHARED_LIBRARIES, ["libffi"]),
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
 )
 
 cc_test(
     name = "libffi_seh_test",
     srcs = ["@cpython//python/private/libffi:seh_test.c"],
-    deps = ["@cpython_libffi//:libffi"],
+    dynamic_deps = shared_library_dependencies(SHARED_LIBRARIES, ["libffi"]),
+    deps = [dependency("libffi")],
     tags = [] if PYTHON_VERSION == "3.14" else ["manual"],
     target_compatible_with = select({
         ":windows_arm64": [],
@@ -908,6 +907,7 @@ cc_library(
 
 cc_shared_library(
     name = "python_dll",
+    dynamic_deps = shared_library_dependencies(SHARED_LIBRARIES, STATIC_MODULES.dependencies),
     deps = [
         ":python_core_no_frozen",
         ":python_frozen",
@@ -948,6 +948,7 @@ cc_import(
 
 cc_shared_library(
     name = "python_install_dll",
+    dynamic_deps = shared_library_dependencies(SHARED_LIBRARIES, INSTALL_STATIC_MODULES.dependencies),
     deps = [
         ":python_core_no_frozen",
         ":python_frozen",
@@ -1164,11 +1165,13 @@ SHARED_EXTENSIONS = shared_extensions(
     CPYTHON_MODULE_SOURCES,
     python_import = ":python_dll_import",
     python_import_library = PYTHON_IMPORT_LIBRARY,
+    shared_libraries = SHARED_LIBRARIES,
     stable_import = ":python3_dll_import",
 )
 
 NATIVE_TEST_PROGRAMS = native_test_programs(
     version = PYTHON_VERSION,
+    dynamic_deps = shared_library_dependencies(SHARED_LIBRARIES, STATIC_MODULES.dependencies),
     deps = select({
         ":windows_arm64": [
             ":headers",
@@ -1313,6 +1316,11 @@ BUILD_METADATA = cpython_build_metadata(
 cc_binary(
     name = "runtime/python",
     srcs = ["Programs/python.c"],
+    dynamic_deps = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": shared_library_dependencies(SHARED_LIBRARIES, STATIC_MODULES.dependencies),
+    }),
     additional_linker_inputs = select({
         ":windows_arm64": [":python_exe_resource"],
         ":windows_x86_64": [":python_exe_resource"],
@@ -1337,6 +1345,11 @@ cc_binary(
 cc_binary(
     name = "install_runtime/python",
     srcs = ["Programs/python.c"],
+    dynamic_deps = select({
+        ":windows_arm64": [],
+        ":windows_x86_64": [],
+        "//conditions:default": shared_library_dependencies(SHARED_LIBRARIES, INSTALL_STATIC_MODULES.dependencies),
+    }),
     additional_linker_inputs = select({
         ":windows_arm64": [":python_exe_resource"],
         ":windows_x86_64": [":python_exe_resource"],
@@ -1399,11 +1412,11 @@ alias(
 WINDOWS_LICENSE_INPUTS = [
     "LICENSE",
     "PC/crtlicense.txt",
-    "@bzip2//:LICENSE",
-    "@cpython_libffi//:LICENSE",
-    "@openssl//:LICENSE.txt",
-    "@xz//:COPYING",
-    "@zlib//:LICENSE",
+    dependency("bzip2_license"),
+    dependency("libffi_license"),
+    dependency("openssl_license"),
+    dependency("xz_license"),
+    dependency("zlib_license"),
 ]
 
 run_binary(

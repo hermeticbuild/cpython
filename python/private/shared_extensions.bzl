@@ -1,5 +1,6 @@
 """Shared CPython extensions required by the test runtimes."""
 
+load("@cpython//python/private:dependencies.bzl", "dependency", "dependency_names", "shared_library_dependencies")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 
 _VERSIONED_WINDOWS_IMPORT = "versioned"
@@ -34,7 +35,7 @@ _COMMON_EXTENSIONS = {
     # CPython PCbuild places them in pythonXY.dll and _ctypes.pyd, respectively.
     "_ctypes": {
         "core_module": False,
-        "deps": ["@cpython_libffi//:libffi"],
+        "deps": [dependency("libffi")],
         "local_defines_by_version": {
             "3.11": [
                 "HAVE_FFI_CLOSURE_ALLOC=1",
@@ -172,6 +173,7 @@ def _shared_extension(
         core_module,
         target_compatible_with,
         deps = [],
+        dynamic_deps = [],
         local_defines = []):
     # The shared extension retains undefined Python API symbols. The Python
     # interpreter resolves those symbols when it loads the extension.
@@ -183,6 +185,7 @@ def _shared_extension(
             "-fwrapv",
         ],
         deps = [headers] + deps,
+        dynamic_deps = dynamic_deps,
         linkshared = True,
         linkopts = select({
             "@platforms//os:macos": ["-Wl,-undefined,dynamic_lookup"],
@@ -204,6 +207,7 @@ def _windows_extension(
         windows_imports,
         copts = _WINDOWS_COPTS,
         extra_deps = [],
+        dynamic_deps = [],
         extra_linkopts = [],
         extra_local_defines = []):
     deps = [headers] + extra_deps
@@ -226,6 +230,7 @@ def _windows_extension(
         srcs = srcs,
         copts = copts,
         deps = deps,
+        dynamic_deps = dynamic_deps,
         features = ["no_windows_export_all_symbols"],
         linkopts = linkopts,
         linkshared = True,
@@ -260,7 +265,8 @@ def shared_extensions(
         headers = ":headers",
         python_import = None,
         python_import_library = None,
-        stable_import = None):
+        stable_import = None,
+        shared_libraries = {}):
     """Defines shared extensions and returns their runtime labels.
 
     Args:
@@ -271,6 +277,7 @@ def shared_extensions(
       python_import: The versioned Windows CPython import-library target.
       python_import_library: The versioned Windows import-library filename.
       stable_import: The Windows stable-ABI import-library target.
+      shared_libraries: Shared libraries provided for native dependencies, by name.
 
     Returns:
       Platform-specific lists of shared-extension labels.
@@ -315,6 +322,10 @@ def shared_extensions(
     for module_name in sorted(extensions):
         extension = extensions[module_name]
         extension_sources = _extension_sources(module_name, extension, module_sources, version)
+        dynamic_deps = shared_library_dependencies(
+            shared_libraries,
+            dependency_names(extension.get("deps", [])),
+        )
         local_defines = (
             extension.get("local_defines", []) +
             extension.get("local_defines_by_version", {}).get(version, [])
@@ -328,6 +339,7 @@ def shared_extensions(
                     headers = headers,
                     core_module = extension["core_module"],
                     deps = extension.get("deps", []),
+                    dynamic_deps = dynamic_deps,
                     local_defines = local_defines,
                     target_compatible_with = posix_target.compatibility,
                 )
@@ -348,6 +360,7 @@ def shared_extensions(
                 windows_imports = extension.get("windows_imports", [_VERSIONED_WINDOWS_IMPORT]),
                 copts = extension.get("windows_copts", _WINDOWS_COPTS),
                 extra_deps = extension.get("deps", []),
+                dynamic_deps = dynamic_deps,
                 extra_linkopts = extension.get("windows_linkopts", []),
                 extra_local_defines = local_defines,
             )

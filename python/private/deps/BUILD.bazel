@@ -1,0 +1,17 @@
+load("@bazel_lib//lib:copy_file.bzl", "copy_file")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+copy_file(
+    name = "sqlite3_header",
+    src = "@sqlite3//:sqlite3.h",
+    out = "sqlite3.h",
+)
+
+cc_library(
+    name = "sqlite3",
+    srcs = ["@sqlite3//:sqlite3.c"],
+    hdrs = [":sqlite3_header"],
+    defines = ["SQLITE_ENABLE_FTS4=1"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)

@@ -29,7 +29,7 @@ _TEST_PROGRAMS = {
     },
 }
 
-def native_test_programs(version, deps, linkopts = [], local_defines = []):
+def native_test_programs(version, deps, dynamic_deps = [], linkopts = [], local_defines = []):
     """Defines CPython native test programs and returns their target labels.
 
     Programs/test_frozenmain.h is the generated frozen-main helper checked into
@@ -39,6 +39,7 @@ def native_test_programs(version, deps, linkopts = [], local_defines = []):
     Args:
       version: Supported CPython minor version.
       deps: C++ dependencies required by each native test program.
+      dynamic_deps: Shared libraries linked by the POSIX native test programs.
       linkopts: Platform link options required by the CPython core.
       local_defines: Preprocessor definitions for each native test program.
 
@@ -59,6 +60,7 @@ def native_test_programs(version, deps, linkopts = [], local_defines = []):
                 "-fwrapv",
             ],
             deps = deps,
+            dynamic_deps = dynamic_deps,
             local_defines = local_defines,
             linkopts = linkopts,
             target_compatible_with = select({
