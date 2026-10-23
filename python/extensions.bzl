@@ -10,6 +10,7 @@ _LIBFFI_BUILD_FILE = Label("//:libffi.BUILD.bazel")
 def _python_impl(module_ctx):
     requested_versions = {}
     root_requested_versions = {}
+    root_patches = {}
 
     for module in module_ctx.modules:
         for version_tag in module.tags.version:
@@ -25,6 +26,9 @@ def _python_impl(module_ctx):
             requested_versions[version] = True
             if module.is_root:
                 root_requested_versions[version] = True
+                root_patches.setdefault(version, []).extend(version_tag.patches)
+            elif version_tag.patches:
+                fail("python.version(patches = ...) may only be used by the root module, not {!r}".format(module.name))
 
     if requested_versions:
         http_archive(
@@ -54,7 +58,7 @@ def _python_impl(module_ctx):
             minor = release.minor,
             minor_version = release.minor_version,
             needs_deepfreeze = release.needs_deepfreeze,
-            patches = release.patches,
+            patches = release.patches + root_patches.get(version, []),
             release = release.release,
             release_level = release.release_level,
             resource_field3 = release.resource_field3,
@@ -88,6 +92,9 @@ def _python_impl(module_ctx):
 
 _version = tag_class(
     attrs = {
+        "patches": attr.label_list(
+            doc = "Patches applied to the CPython sources after the module's own, with -p1. Root module only.",
+        ),
         "version": attr.string(mandatory = True),
     },
     doc = "Selects a supported Python minor version.",

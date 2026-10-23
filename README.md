@@ -62,6 +62,18 @@ The LLVM toolchains build each selected CPython release for Linux, macOS, and
 Windows on arm64 and x86_64. Windows targets use the MSVC ABI, the hermetic MSVC
 runtime, and the hermetic Windows SDK supplied by `windows_support`.
 
+## Patch the CPython sources
+
+The root module can apply its own patches to a selected version, after the
+module's own patches, with `-p1`:
+
+```starlark
+python.version(
+    version = "3.13",
+    patches = ["//third_party/cpython:my-change.patch"],
+)
+```
+
 ## Integration fixture
 
 [`tests/integration`](tests/integration) is a nested Bzlmod consumer. It selects
