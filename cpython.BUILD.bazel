@@ -3,6 +3,7 @@ load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@bazel_lib//lib:run_binary.bzl", "run_binary")
 load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
+load("@cpython//python/private:copts.bzl", "VISIBILITY_COPTS")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:install_only.bzl", "cpython_install_only")
 load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
@@ -445,6 +446,10 @@ cc_library(
 
 bundled_libraries(
     version = PYTHON_VERSION,
+    copts = C_STANDARD_COPTS + OPTIMIZATION_COPTS + VISIBILITY_COPTS + [
+        "-fwrapv",
+        "-DNDEBUG",
+    ],
 )
 
 cc_library(
@@ -552,7 +557,7 @@ BOOTSTRAP_CORE_SOURCES = CORE_BASE_SOURCES + select({
     ],
 })
 
-COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
+COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + VISIBILITY_COPTS + [
     "-fwrapv",
     "-DNDEBUG",
 ] + select({
@@ -958,6 +963,26 @@ cc_shared_library(
     target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
     user_link_flags = WINDOWS_LINK_LIBRARIES + ["/OPT:REF,NOICF"],
     visibility = ["//visibility:private"],
+)
+
+POSIX_LIBPYTHON = "libpython{}.so.1.0".format(PYTHON_VERSION)
+
+LINUX_TARGET_COMPATIBILITY = select({
+    ":linux_arm64": [],
+    ":linux_x86_64": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+cc_shared_library(
+    name = "libpython",
+    deps = [
+        ":python_core_no_frozen",
+        ":python_frozen",
+        INSTALL_STATIC_MODULES.library,
+    ],
+    shared_lib_name = "install_runtime/" + POSIX_LIBPYTHON,
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+    user_link_flags = PLATFORM_LINKOPTS + ["-Wl,-soname," + POSIX_LIBPYTHON],
 )
 
 filegroup(
