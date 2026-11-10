@@ -3,6 +3,7 @@ load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@bazel_lib//lib:run_binary.bzl", "run_binary")
 load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
+load("@cpython//python/private:copts.bzl", "VISIBILITY_COPTS")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:install_only.bzl", "cpython_install_only")
 load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
@@ -445,6 +446,10 @@ cc_library(
 
 bundled_libraries(
     version = PYTHON_VERSION,
+    copts = C_STANDARD_COPTS + OPTIMIZATION_COPTS + VISIBILITY_COPTS + [
+        "-fwrapv",
+        "-DNDEBUG",
+    ],
 )
 
 cc_library(
@@ -552,7 +557,7 @@ BOOTSTRAP_CORE_SOURCES = CORE_BASE_SOURCES + select({
     ],
 })
 
-COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
+COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + VISIBILITY_COPTS + [
     "-fwrapv",
     "-DNDEBUG",
 ] + select({
