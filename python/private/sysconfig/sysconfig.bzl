@@ -110,7 +110,7 @@ def _cpython_sysconfig_impl(ctx):
     )
 
     sysconfig_data = ctx.actions.declare_file(
-        "Lib/_sysconfigdata__{}_{}.py".format(
+        ctx.attr.output_prefix + "Lib/_sysconfigdata__{}_{}.py".format(
             ctx.attr.platform,
             ctx.attr.multiarch,
         ),
@@ -126,7 +126,7 @@ def _cpython_sysconfig_impl(ctx):
     runtime_build_details_outputs = []
     sysconfig_json_outputs = []
     if ctx.attr.platform != "windows":
-        makefile = ctx.actions.declare_file("Makefile")
+        makefile = ctx.actions.declare_file(ctx.attr.output_prefix + "Makefile")
         args.add("--makefile-template", ctx.file.makefile_template)
         args.add("--makefile-out", makefile)
         inputs.append(ctx.file.makefile_template)
@@ -134,15 +134,15 @@ def _cpython_sysconfig_impl(ctx):
         makefile_outputs.append(makefile)
         if ctx.attr.build_details_schema:
             sysconfig_json = ctx.actions.declare_file(
-                "runtime/build/lib.{}-{}/_sysconfig_vars__{}_{}.json".format(
+                ctx.attr.output_prefix + "runtime/build/lib.{}-{}/_sysconfig_vars__{}_{}.json".format(
                     ctx.attr.platform_tag,
                     "{}.{}".format(ctx.attr.major, ctx.attr.minor),
                     ctx.attr.platform,
                     ctx.attr.multiarch,
                 ),
             )
-            install_build_details = ctx.actions.declare_file("install_metadata/build-details.json")
-            runtime_build_details = ctx.actions.declare_file("runtime/build-details.json")
+            install_build_details = ctx.actions.declare_file(ctx.attr.output_prefix + "install_metadata/build-details.json")
+            runtime_build_details = ctx.actions.declare_file(ctx.attr.output_prefix + "runtime/build-details.json")
             args.add("--sysconfig-json-out", sysconfig_json)
             args.add("--major", ctx.attr.major)
             args.add("--minor", ctx.attr.minor)
@@ -205,6 +205,9 @@ cpython_sysconfig = rule(
         "micro": attr.int(mandatory = True),
         "multiarch": attr.string(mandatory = True),
         "minor": attr.int(mandatory = True),
+        "output_prefix": attr.string(
+            doc = "Directory prepended to every output, to declare several variants in one package.",
+        ),
         "platform": attr.string(mandatory = True),
         "platform_tag": attr.string(mandatory = True),
         "pyconfig": attr.label(

@@ -1,6 +1,7 @@
 """Static CPython module manifests for the pinned supported releases."""
 
 load("@cpython//python/private:versions.bzl", "SUPPORTED_PYTHON_VERSIONS")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 _SUPPORTED_CATEGORIES = [
@@ -766,4 +767,114 @@ def declare_cpython_static_modules(
         library = ":{}".format(name),
         module_libraries = generated_module_libraries,
         registry_source = ":{}".format(registry_source_target),
+    )
+
+_POSIX_SHARED_MODULE_TARGETS = [
+    struct(
+        compatibility = ["@platforms//os:macos"],
+        multiarch = "darwin",
+        platform = "darwin",
+    ),
+    struct(
+        compatibility = [
+            "@platforms//cpu:aarch64",
+            "@platforms//os:linux",
+        ],
+        multiarch = "aarch64-linux-gnu",
+        platform = "linux",
+    ),
+    struct(
+        compatibility = [
+            "@platforms//cpu:x86_64",
+            "@platforms//os:linux",
+        ],
+        multiarch = "x86_64-linux-gnu",
+        platform = "linux",
+    ),
+]
+
+def declare_cpython_shared_modules(
+        name,
+        version,
+        module_sources,
+        soabi,
+        categories,
+        deps = [],
+        copts = [],
+        visibility = None):
+    """Declares POSIX shared extension modules and a filegroup collecting them.
+
+    Args:
+        name: Name of the filegroup collecting the modules of the target platform.
+        version: Supported CPython minor version.
+        module_sources: Generated source membership for the pinned release.
+        soabi: The extension-module ABI tag, such as cpython-313.
+        categories: Subset of bundled, posix, stdlib, and test.
+        deps: Dependencies required by every module, including the Python headers.
+        copts: C options required by every module. Do not define Py_BUILD_CORE.
+        visibility: Visibility of the filegroup.
+    """
+    for category in categories:
+        if category not in _SUPPORTED_CATEGORIES or category == "bootstrap":
+            fail("Unsupported CPython shared-module category {!r}".format(category))
+
+    modules = [
+        module
+        for module in cpython_static_module_manifest(version, module_sources)
+        if module.category in categories and module.platform != "windows"
+    ]
+    module_names = {module.name: True for module in modules}
+
+    outputs = {target.multiarch: [] for target in _POSIX_SHARED_MODULE_TARGETS}
+    for module in modules:
+        module_deps = [dep for dep in module.deps if dep not in module_names]
+        module_copts = [
+            "-DPy_BUILD_CORE_MODULE=1" if copt == "-DPy_BUILD_CORE_BUILTIN=1" else copt
+            for copt in module.copts
+        ]
+        for target in _POSIX_SHARED_MODULE_TARGETS:
+            if module.platform not in ("all", "posix", target.platform):
+                continue
+            output = "{}.{}-{}.so".format(module.name, soabi, target.multiarch)
+            cc_binary(
+                name = output,
+                srcs = module.sources,
+                copts = module_copts + copts,
+                deps = deps + module_deps,
+                includes = module.includes,
+                linkopts = module.linkopts + select({
+                    "@platforms//os:macos": ["-Wl,-undefined,dynamic_lookup"],
+                    "//conditions:default": [],
+                }),
+                linkshared = True,
+                target_compatible_with = target.compatibility,
+                visibility = ["//visibility:private"],
+            )
+            outputs[target.multiarch].append(":" + output)
+
+    native.filegroup(
+        name = name,
+        srcs = select({
+            "@platforms//os:macos": outputs["darwin"],
+            ":{}_linux_aarch64".format(name): outputs["aarch64-linux-gnu"],
+            ":{}_linux_x86_64".format(name): outputs["x86_64-linux-gnu"],
+            "//conditions:default": [],
+        }),
+        visibility = visibility,
+    )
+    native.config_setting(
+        name = "{}_linux_aarch64".format(name),
+        constraint_values = [
+            "@platforms//cpu:aarch64",
+            "@platforms//os:linux",
+        ],
+        visibility = ["//visibility:private"],
+    )
+    native.config_setting(
+        name = "{}_linux_x86_64".format(name),
+        constraint_values = [
+            "@platforms//cpu:x86_64",
+            "@platforms//os:linux",
+        ],
+        visibility = ["//visibility:private"],
     )

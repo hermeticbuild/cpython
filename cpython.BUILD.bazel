@@ -1,12 +1,14 @@
 load("@bazel_lib//lib:copy_file.bzl", "copy_file")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@bazel_lib//lib:run_binary.bzl", "run_binary")
+load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
 load("@cpython//python/private:build_metadata.bzl", "cpython_build_metadata")
 load("@cpython//python/private:bundled_libraries.bzl", "bundled_libraries")
+load("@cpython//python/private:copts.bzl", "VISIBILITY_COPTS")
 load("@cpython//python/private:deepfreeze.bzl", "deepfreeze_sources")
 load("@cpython//python/private:install_only.bzl", "cpython_install_only")
-load("@cpython//python/private:install_tree.bzl", "cpython_install_tree")
-load("@cpython//python/private:modules.bzl", "declare_cpython_static_modules")
+load("@cpython//python/private:install_tree.bzl", "INSTALL_STDLIB_EXCLUDES", "cpython_install_tree")
+load("@cpython//python/private:modules.bzl", "declare_cpython_shared_modules", "declare_cpython_static_modules")
 load("@cpython//python/private:platforms.bzl", "MACOSX_DEPLOYMENT_TARGET", "cpython_target_field_select", "declare_cpython_target_config_settings")
 load("@cpython//python/private:pyconfig.bzl", "pyconfig")
 load("@cpython//python/private:shared_extensions.bzl", "shared_extensions")
@@ -235,6 +237,32 @@ SYSCONFIG_COMMON_BUILD_VARS = {
     "srcdir": ".",
 }
 
+SYSCONFIG_LINUX_ARM64_BUILD_VARS = merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+    "BLDSHARED": "clang -shared",
+    "EXT_SUFFIX": ".{}-aarch64-linux-gnu.so".format(PYTHON_SOABI),
+    "LIBM": "-lm",
+    "LIBPL": "{}/config-{}-aarch64-linux-gnu".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+    "LIBS": "-ldl -lm -lpthread -lrt -lutil",
+    "LINKFORSHARED": "-Wl,--export-dynamic",
+    "MACHDEP": "linux",
+    "MULTIARCH": "aarch64-linux-gnu",
+    "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"aarch64-linux-gnu\\\"",
+    "SOABI": "{}-aarch64-linux-gnu".format(PYTHON_SOABI),
+})
+
+SYSCONFIG_LINUX_X86_64_BUILD_VARS = merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
+    "BLDSHARED": "clang -shared",
+    "EXT_SUFFIX": ".{}-x86_64-linux-gnu.so".format(PYTHON_SOABI),
+    "LIBM": "-lm",
+    "LIBPL": "{}/config-{}-x86_64-linux-gnu".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
+    "LIBS": "-ldl -lm -lpthread -lrt -lutil",
+    "LINKFORSHARED": "-Wl,--export-dynamic",
+    "MACHDEP": "linux",
+    "MULTIARCH": "x86_64-linux-gnu",
+    "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"x86_64-linux-gnu\\\"",
+    "SOABI": "{}-x86_64-linux-gnu".format(PYTHON_SOABI),
+})
+
 cpython_sysconfig(
     name = "generated_sysconfig",
     build_details_schema = CPYTHON_RELEASE.build_details_schema or "",
@@ -265,30 +293,8 @@ cpython_sysconfig(
             "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"darwin\\\"",
             "SOABI": "{}-darwin".format(PYTHON_SOABI),
         }),
-        ":linux_arm64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
-            "BLDSHARED": "clang -shared",
-            "EXT_SUFFIX": ".{}-aarch64-linux-gnu.so".format(PYTHON_SOABI),
-            "LIBM": "-lm",
-            "LIBPL": "{}/config-{}-aarch64-linux-gnu".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
-            "LIBS": "-ldl -lm -lpthread -lrt -lutil",
-            "LINKFORSHARED": "-Wl,--export-dynamic",
-            "MACHDEP": "linux",
-            "MULTIARCH": "aarch64-linux-gnu",
-            "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"aarch64-linux-gnu\\\"",
-            "SOABI": "{}-aarch64-linux-gnu".format(PYTHON_SOABI),
-        }),
-        ":linux_x86_64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
-            "BLDSHARED": "clang -shared",
-            "EXT_SUFFIX": ".{}-x86_64-linux-gnu.so".format(PYTHON_SOABI),
-            "LIBM": "-lm",
-            "LIBPL": "{}/config-{}-x86_64-linux-gnu".format(SYSCONFIG_LIBDEST, PYTHON_VERSION),
-            "LIBS": "-ldl -lm -lpthread -lrt -lutil",
-            "LINKFORSHARED": "-Wl,--export-dynamic",
-            "MACHDEP": "linux",
-            "MULTIARCH": "x86_64-linux-gnu",
-            "MULTIARCH_CPPFLAGS": "-DMULTIARCH=\\\"x86_64-linux-gnu\\\"",
-            "SOABI": "{}-x86_64-linux-gnu".format(PYTHON_SOABI),
-        }),
+        ":linux_arm64": SYSCONFIG_LINUX_ARM64_BUILD_VARS,
+        ":linux_x86_64": SYSCONFIG_LINUX_X86_64_BUILD_VARS,
         ":windows_arm64": merge_sysconfig_build_vars(SYSCONFIG_COMMON_BUILD_VARS, {
             "AR": "llvm-lib",
             "BLDSHARED": "lld-link /DLL",
@@ -445,6 +451,10 @@ cc_library(
 
 bundled_libraries(
     version = PYTHON_VERSION,
+    copts = C_STANDARD_COPTS + OPTIMIZATION_COPTS + VISIBILITY_COPTS + [
+        "-fwrapv",
+        "-DNDEBUG",
+    ],
 )
 
 cc_library(
@@ -552,7 +562,7 @@ BOOTSTRAP_CORE_SOURCES = CORE_BASE_SOURCES + select({
     ],
 })
 
-COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + [
+COMMON_COPTS = C_STANDARD_COPTS + OPTIMIZATION_COPTS + VISIBILITY_COPTS + [
     "-fwrapv",
     "-DNDEBUG",
 ] + select({
@@ -663,6 +673,20 @@ INSTALL_STATIC_MODULES = declare_cpython_static_modules(
     exclude_modules = SHARED_MODULE_NAMES,
     module_libraries = STATIC_MODULES.module_libraries,
     visibility = ["//visibility:private"],
+)
+
+declare_cpython_shared_modules(
+    name = "shared_modules",
+    version = PYTHON_VERSION,
+    module_sources = CPYTHON_MODULE_SOURCES,
+    soabi = PYTHON_SOABI,
+    categories = [
+        "bundled",
+        "posix",
+        "stdlib",
+    ],
+    copts = COMMON_COPTS,
+    deps = [":headers"],
 )
 
 cc_library(
@@ -958,6 +982,111 @@ cc_shared_library(
     target_compatible_with = WINDOWS_TARGET_COMPATIBILITY,
     user_link_flags = WINDOWS_LINK_LIBRARIES + ["/OPT:REF,NOICF"],
     visibility = ["//visibility:private"],
+)
+
+POSIX_LIBPYTHON = "libpython{}.so.1.0".format(PYTHON_VERSION)
+
+LINUX_TARGET_COMPATIBILITY = select({
+    ":linux_arm64": [],
+    ":linux_x86_64": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+cc_shared_library(
+    name = "libpython",
+    deps = [
+        ":python_core_no_frozen",
+        ":python_frozen",
+        BOOTSTRAP_MODULES.library,
+    ],
+    shared_lib_name = "install_runtime/" + POSIX_LIBPYTHON,
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+    user_link_flags = PLATFORM_LINKOPTS + ["-Wl,-soname," + POSIX_LIBPYTHON],
+)
+
+cc_library(
+    name = "libpython3_empty",
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+)
+
+cc_shared_library(
+    name = "libpython3",
+    dynamic_deps = [":libpython"],
+    shared_lib_name = "install_runtime/libpython3.so",
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+    user_link_flags = [
+        "-Wl,--no-as-needed",
+        "-Wl,-soname,libpython3.so",
+    ],
+    deps = [":libpython3_empty"],
+)
+
+cc_binary(
+    name = "shared_runtime/python",
+    srcs = ["Programs/python.c"],
+    copts = CORE_COPTS,
+    dynamic_deps = [":libpython"],
+    linkopts = PYTHON_LINKOPTS + ["-Wl,-rpath,$$ORIGIN/../lib"],
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+    deps = [":headers"],
+)
+
+expand_template(
+    name = "shared_pyconfig_h",
+    out = "shared/pyconfig.h",
+    substitutions = {"/* #undef Py_ENABLE_SHARED */": "#define Py_ENABLE_SHARED 1"},
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+    template = ":pyconfig_h",
+)
+
+SHARED_SYSCONFIG_BUILD_VARS = {
+    "BLDLIBRARY": "-L. -lpython{}".format(PYTHON_VERSION),
+    "INSTSONAME": POSIX_LIBPYTHON,
+    "LDLIBRARY": "libpython{}.so".format(PYTHON_VERSION),
+    "LDVERSION": PYTHON_VERSION,
+    "PY_ENABLE_SHARED": "1",
+}
+
+cpython_sysconfig(
+    name = "shared_sysconfig",
+    build_details_schema = CPYTHON_RELEASE.build_details_schema or "",
+    build_vars = select({
+        ":linux_arm64": merge_sysconfig_build_vars(SYSCONFIG_LINUX_ARM64_BUILD_VARS, SHARED_SYSCONFIG_BUILD_VARS),
+        ":linux_x86_64": merge_sysconfig_build_vars(SYSCONFIG_LINUX_X86_64_BUILD_VARS, SHARED_SYSCONFIG_BUILD_VARS),
+    }),
+    integer_build_vars = ["PY_ENABLE_SHARED"],
+    cache_tag = CPYTHON_RELEASE.cache_tag,
+    hexversion = CPYTHON_RELEASE.hexversion,
+    makefile_template = "Makefile.pre.in",
+    major = CPYTHON_RELEASE.major,
+    micro = CPYTHON_RELEASE.micro,
+    multiarch = cpython_target_field_select("multiarch"),
+    minor = CPYTHON_RELEASE.minor,
+    output_prefix = "shared/",
+    platform = cpython_target_field_select("sysconfig_platform"),
+    platform_tag = cpython_target_field_select("sysconfig_platform_tag"),
+    pyconfig = ":shared_pyconfig_h",
+    release = CPYTHON_RELEASE.release,
+    release_level = CPYTHON_RELEASE.release_level,
+    serial = CPYTHON_RELEASE.serial,
+    supports_isolated_interpreters = CPYTHON_RELEASE.supports_isolated_interpreters or False,
+    target_compatible_with = LINUX_TARGET_COMPATIBILITY,
+)
+
+filegroup(
+    name = "shared_sysconfig_data",
+    srcs = [":shared_sysconfig"],
+    output_group = "sysconfig_data",
+)
+
+filegroup(
+    name = "stdlib",
+    srcs = glob(["Lib/**"], exclude = INSTALL_STDLIB_EXCLUDES),
+)
+
+filegroup(
+    name = "include",
+    srcs = glob(["Include/**/*.h"]),
 )
 
 filegroup(
