@@ -4,7 +4,7 @@ load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
-_INSTALL_ONLY_STDLIB_EXCLUDES = [
+INSTALL_STDLIB_EXCLUDES = [
     "Lib/bsddb/test/**",
     "Lib/ctypes/test/**",
     "Lib/distutils/tests/**",
@@ -100,7 +100,7 @@ def cpython_install_tree(
             "Include/**/*.h",
             "Lib/**",
         ],
-        exclude = _INSTALL_ONLY_STDLIB_EXCLUDES,
+        exclude = INSTALL_STDLIB_EXCLUDES,
     ) + [pyconfig]
 
     copy_to_directory(
